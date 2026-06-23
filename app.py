@@ -3,9 +3,11 @@ import logging
 from flask import Flask
 
 from shared.infrastructure.database import init_db
+from iam.interfaces.services import iam_api
 
-# Flask application instance
 app = Flask(__name__)
+
+app.register_blueprint(iam_api, url_prefix="/api/v1")
 
 # Logging configuration
 logging.basicConfig(
