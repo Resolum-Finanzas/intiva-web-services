@@ -1,0 +1,708 @@
+@startuml
+
+top to bottom direction
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 10
+skinparam linetype ortho
+skinparam monochrome false
+skinparam shadowing false
+
+title Intiva Web Services Application - Class Diagram
+
+' Shared components used across bounded contexts
+package "Shared Components" #F29983 {
+  package "domain" {
+    package "model" {
+      class BaseEntity {
+        id: int
+        created_at: datetime
+        updated_at: datetime
+      }
+    }
+  }
+
+  package "infrastructure" {
+    package "persistence" {
+      package "repositories" {
+        class BaseRepository {
+          +to_entity(model): TEntity
+          +to_model(entity): TModel
+          +create(entity): TEntity
+          +update(entity): TEntity
+          +get_by_id(id): Optional[TEntity]
+          +get_all(): List[TEntity]
+          +delete(id): None
+        }
+      }
+
+      package "model" {
+        class BaseModelORM {
+          id: Mapped[str]
+          created_at: Mapped[datetime]
+          updated_at: Mapped[datetime]
+        }
+      }
+
+      package "database" {
+        class db {
+          +connect()
+          +create_tables()
+          +shutdown()
+        }
+
+        class init_db {
+          +init_db()
+          +get_db()
+        }
+      }
+    }
+  }
+}
+
+' Main application class
+class app {
+  +setup()
+  +run()
+}
+
+' IAM Bounded Context
+package "IAM Bounded Context" #FFEBDE {
+
+  ' Domain layer
+  package "domain" {
+    package "services" {
+      class UserService {
+        +validate_email(email): None
+        +validate_password(password): None
+        +create_user(email, hashed_password): User
+      }
+    }
+
+    package "model" {
+      class User {
+        email: str
+        hashed_password: str
+      }
+    }
+  }
+
+  ' Application layer
+  package "application" {
+    class AuthenticationApplicationService {
+      -user_repository: UserRepository
+      -user_service: UserService
+      -hashing_service: HashingService
+      -token_service: TokenService
+      +__init__(db)
+      +sign_up(full_name, email, password): User
+      +sign_in(email, password): Tuple[User, str]
+    }
+
+    class UserApplicationService {
+      -user_repository: UserRepository
+      +__init__(db)
+      +get_user_by_email(email): Optional[User]
+      +get_user_by_id(id): Optional[User]
+    }
+  }
+
+  ' Infrastructure layer
+  package "infrastructure" {
+    package "tokens" {
+      class TokenService {
+        +create_access_token(data): str
+        +decode_token(token): dict[str, Any]
+      }
+    }
+
+    package "hashing" {
+      class HashingService {
+        +hash(password): str
+        +verify(password, hashed_password): bool
+      }
+    }
+
+    package "repositories" {
+      class UserRepository {
+        -user_mysql_repository: UserMySQLRepository
+        +__init__(db)
+        +create_user(email, hashed_password): User
+        +get_by_email(email): Optional[User]
+        +exists_by_email(email): bool
+        +get_by_id(id): Optional[User]
+      }
+    }
+
+    package "persistence" {
+      package "model" {
+        class UserModel {
+          email: Mapped[str]
+          hashed_password: Mapped[str]
+        }
+      }
+
+      package "repositories" {
+        class UserMySQLRepository {
+          +__init__(db)
+          +to_model(user): UserModel
+          +to_entity(user_model): User
+          +get_by_email(email): Optional[User]
+          +exists_by_email(email): bool
+        }
+      }
+    }
+  }
+
+  ' Interface layer
+  package "interfaces" {
+    class iam_api {
+      +sign_up(): UserResponse
+      +sign_in(): AuthenticatedUserResponse
+      +get_user_by_email(): UserResponse
+      +get_user_by_id(): UserResponse
+    }
+  }
+}
+
+' IAM Bounded Context relationships
+iam_api ..> AuthenticationApplicationService : uses
+iam_api ..> UserApplicationService : uses
+UserApplicationService --> UserRepository : uses
+AuthenticationApplicationService --> UserRepository : uses
+AuthenticationApplicationService --> UserService : uses
+AuthenticationApplicationService --> TokenService : uses
+AuthenticationApplicationService --> HashingService : uses
+UserRepository --> UserMySQLRepository : uses
+UserMySQLRepository --> UserModel : uses
+UserMySQLRepository --|> BaseRepository : extends
+UserModel --> BaseModelORM : uses
+UserMySQLRepository ..> User : creates
+UserService --> User : creates
+User --|> BaseEntity : inherits
+
+' Profiles Management Bounded Context
+package "Profiles Bounded Context" #DEEAFF {
+
+  ' Domain layer
+  package "domain" {
+    package "services" {
+      class ProfileService {
+        +create_profile(user_id, full_name): Profile
+      }
+    }
+
+    package "model" {
+      class Profile {
+        first_name: str
+        last_name: str
+        user_id: str
+      }
+    }
+  }
+
+  ' Application layer
+  package "application" {
+    class ProfileApplicationService {
+      -profile_repository: ProfileRepository
+      +__init__(db)
+      +create_profile(full_name, user_id): Profile
+      +get_profile_by_user_id(id): Optional[Profile]
+    }
+  }
+
+  ' Infrastructure layer
+  package "infrastructure" {
+    package "repositories" {
+      class ProfileRepository {
+        -profile_mysql_repository: ProfileMySQLRepository
+        +__init__(db)
+        +create_profile(full_name, user_id): Profile
+        +get_by_user_id(user_id): Optional[Profile]
+      }
+    }
+
+    package "persistence" {
+      package "model" {
+        class ProfileModel {
+          first_name: Mapped[str]
+          last_name: Mapped[str]
+          user_id: Mapped[str]
+        }
+      }
+
+      package "repositories" {
+        class ProfileMySQLRepository {
+          +__init__(db)
+          +to_model(profile): ProfileModel
+          +to_entity(profile_model): Profile
+          +get_by_user_id(user_id): Optional[Profile]
+        }
+      }
+    }
+  }
+
+  ' Interface layer
+  package "interfaces" {
+    class profiles_api {
+      +get_profile_by_user_id(): ProfileResponse
+    }
+  }
+}
+
+' Profiles and Preferences Bounded Context relationships
+profiles_api ..> ProfileApplicationService : uses
+ProfileApplicationService --> ProfileRepository : uses
+ProfileApplicationService --> ProfileService : uses
+ProfileRepository --> ProfileMySQLRepository : uses
+ProfileMySQLRepository --> ProfileModel : uses
+ProfileMySQLRepository --|> BaseRepository : extends
+ProfileModel --> BaseModelORM : uses
+ProfileMySQLRepository ..> Profile : creates
+ProfileService --> Profile : creates
+Profile --|> BaseEntity : inherits
+
+AuthenticationApplicationService --> ProfileApplicationService : uses
+
+profiles_api ..> iam_api : authenticates request
+
+' Vehicle Management Bounded Context
+package "Vehicles Bounded Context" #E8FFE8 {
+
+  ' Domain layer
+  package "domain" {
+    package "services" {
+      class VehicleService {
+        +create_or_update_vehicle(): Vehicle
+      }
+    }
+
+    package "model" {
+      class Vehicle {
+        brand: str
+        model: str
+        use_age: int
+        category: str
+        fuelType: str
+        priceQuantity: float
+        priceCurrency: str
+        priceSymbol: str
+        mileage: int
+        color: str
+        pictureUrl: str
+      }
+    }
+  }
+
+  ' Application layer
+  package "application" {
+    class VehicleApplicationService {
+      -vehicle_repository: VehicleRepository
+      +__init__(db)
+      +create_or_edit_vehicle(): Vehicle
+      +get_all(): List[Vehicle]
+    }
+  }
+
+  ' Infrastructure layer
+  package "infrastructure" {
+    package "repositories" {
+      class VehicleRepository {
+        -vehicle_mysql_repository: VehicleMySQLRepository
+        +__init__(db)
+        +create_or_edit_vehicle(): Vehicle
+        +get_all(): List[Vehicle]
+      }
+    }
+
+    package "persistence" {
+      package "model" {
+        class VehicleModel {
+          brand: Mapped[str]
+          model: Mapped[str]
+          use_age: Mapped[int]
+          category: Mapped[str]
+          fuelType: Mapped[str]
+          priceQuantity: Mapped[float]
+          priceCurrency: Mapped[str]
+          priceSymbol: Mapped[str]
+          mileage: Mapped[int]
+          color: Mapped[str]
+          pictureUrl: Mapped[str]
+        }
+      }
+
+      package "repositories" {
+        class VehicleMySQLRepository {
+          +__init__(db)
+          +to_model(vehicle): VehicleModel
+          +to_entity(vehicle_model): Vehicle
+        }
+      }
+    }
+  }
+
+  ' Interface layer
+  package "interfaces" {
+    class vehicles_api {
+      +get_all_vehicles(): VehicleWrapperResponse
+    }
+  }
+}
+
+' Vehicles Bounded Context relationships
+vehicles_api ..> VehicleApplicationService : uses
+VehicleApplicationService --> VehicleRepository : uses
+VehicleApplicationService --> VehicleService : uses
+VehicleRepository --> VehicleMySQLRepository : uses
+VehicleMySQLRepository --> VehicleModel : uses
+VehicleMySQLRepository --|> BaseRepository : extends
+VehicleModel --> BaseModelORM : uses
+VehicleMySQLRepository ..> Vehicle : creates
+VehicleService --> Vehicle : creates
+Vehicle --|> BaseEntity : inherits
+
+vehicles_api ..> iam_api : authenticates request
+
+' Analytics Bounded Context
+package "Analytics Bounded Context" #A8A9F7 {
+
+  ' Domain layer
+  package "domain" {
+    package "algorithms" {
+      class FinancialIndicatorAlgorithm {
+        +calculate_tcea(loan_parameters, payment_schedule): float
+        ' VAN = n∑t=0 (Net Flow of t / (1 + r)^t) [VAN = Sum of (Net Flow of the period / (1 + discount rate of period)^number of periods)]
+        +calculate_van(net_flow_list, discount_rate_list, number_of_periods): float
+        +calculate_tir(net_flow_list, number_of_periods): float
+      }
+
+      class FrenchMethodAlgorithm {
+        ' C = P * [(r * (1 + r)^n)) / ((1 + r)^n - 1))]
+        +calculate_period_fee(financed_amount, tea, total_number_periods): float
+        ' Sd = S * d [Mortgage protection insurance for the period = Financed amount (Start of the period) * Mortgage protection factor]
+        +calculate_mortgage_protection_for_period(financed_amount, mortgage_factor): float
+        ' In = CIn-1 * r [Period interest = Previous balance * credit interest rate]
+        +calculate_interest_for_period(previous_balance, tea, previous_period_interest): float
+        ' An = Cn - In [Amortization = Period fee - Period interest]
+        +calculate_amortization_for_period(period_fee, interest_of_period): float
+        ' CAn = CAn-1 + An [Amortized capital = Previous amortized capital + Amortization of the period] (not so necessary)
+        +calculate_amortized_capital_for_period(previous_amortized, amortization_of_period): float
+        ' CIn = CIn-1 - An [Period balance = Previous balance - Amortization of the period]
+        +calculate_balance_for_period(previous_balance, amortization_of_period): float
+        ' Balloon = S * Balloon percentage [Balloon payment = Financed amount (Start of the period) * Balloon payment percentage]
+        +calculate_balloon_fee(financed_amount, balloon_payment_percentage): float
+      }
+
+      class InsuranceAlgorithm {
+        ' TDA = td * 12 [Mortgage protection annual = mortgage protection rate monthly * 12]
+        ' d = (TDA * days) / (360) [Mortgage protection factor = (mortgage protection annual * payment frequency in days) / (360)]
+        +calculate_mortgage_protection_factor(mortgage_protection_monthly, payment_frequency_in_days): float
+        ' n = (TUA * days) / 360 [Vehicular insurance factor = (Vehicular insurance rate * payment frequency in days) / 360]
+        +calculate_vehicular_insurance_factor(vehicular_insurance_rate): float
+      }
+
+      class GracePeriodAlgorithm {
+        ' PG = (S0 * TEM) [Partial Grace Monthly Payment = Financed amount (Start of the period) * Monthly effective rate (convert to TEM from TEA)]
+        ' Additional will be needed the months of grace period fo calculation of french method without the months of the grace period
+        +calculate_partial_grace_for_monthly_period(financed_amount, tea): float
+        ' S1 = S1 * (1 + TEM)^g [New financed amount at the end of the grace period = Financed amount * (1 + Monthly effective rate)^number of months of grace period]
+        +calculate_total_grace_period_amount(financed_amount, interest, grace_period_months): float
+      }
+    }
+
+    package "services" {
+      class SmartPurchaseService {
+        -financial_indicator_algorithm: FinancialIndicatorAlgorithm
+        -french_method_algorithm: FrenchMethodAlgorithm
+        -insurance_algorithm: InsuranceAlgorithm
+        -grace_period_algorithm: GracePeriodAlgorithm
+        +__init__()
+        +perform_loan_simulation(loan_parameters): Tuple[LoanParameters, LoanSimulation, PaymentSchedule]
+      }
+    }
+
+    package "model" {
+      ' This class represents the parameters required for a loan simulation
+      ' Entered by the user to perform the simulation
+      class LoanParameters {
+        bank_entity: str
+        credit_term_in_months: int
+        initial_payment_amount: float
+        financed_amount: float
+        credit_price: float
+        tea_percentage: float
+        payment_frequency: str
+        balloon_payment_percentage: float
+        vehicular_insurance_enabled: bool
+        ' This is the TUA
+        vehicular_insurance_rate: float
+        mortgage_protection_insurance_enabled: boolean
+        mortgage_protection_insurance_rate: float
+        grace_period_enabled: boolean
+        grace_period_type: str
+        grace_period_in_months: int
+        vehicle_id: str
+        user_id: str
+      }
+
+      ' This class represents the result of a loan simulation, including the calculated TCEA, VAN, TIR, and the payment schedule
+      class LoanSimulation {
+        loan_parameters: LoanParameters
+        payment_schedule: PaymentSchedule
+        tcea_percentage: float
+        ballon_payment_amount: float
+        van: float
+        tir: float
+        grace_interest: float
+        user_id: str
+      }
+
+      ' This class represents the details of each payment period in the loan simulation, including the initial balance, interest amount, amortization amount, tax relief insurance amount, vehicular insurance amount, total payment, final balance, net flow, and whether it is a balloon payment or grace period
+      class PaymentPeriod {
+        period_number: int
+        current_balance: float
+        interest_amount: float
+        amortization_amount: float
+        mortgage_protection_insurance_amount: float
+        vehicular_insurance_amount: float
+        total_payment: float
+        final_balance: float
+        net_flow: float
+        is_balloon: bool
+        is_grace_period: bool
+        payment_date: datetime
+      }
+
+      ' This class represents the overall payment schedule for the loan simulation, including the total interest, total amortization, total tax relief, total vehicular insurance, total payment, total grace interest, and a list of payment periods
+      class PaymentSchedule {
+        total_interest: float
+        total_amortization: float
+        total_mortgage_protection_insurance: float
+        total_vehicular_insurance: float
+        total_payment: float
+        total_grace_interest: float
+        periods: List[PaymentPeriods]
+      }
+    }
+  }
+
+  ' Application layer
+  package "application" {
+    class SmartPurchaseApplicationService {
+      -loan_simulation_repository: LoanSimulationRepository
+      -loan_parameters_repository: LoanParametersRepository
+      -payment_schedule_repository: PaymentScheduleRepository
+      -payment_period_repository: PaymentPeriodRepository
+      -smart_purchase_service: SmartPurchaseService
+      +__init__(db)
+      +perform_loan_simulation(loan_parameters): Tuple[LoanParameters, LoanSimulation, PaymentSchedule]
+      +get_loan_simulation_by_id(loan_simulation_id): Tuple[LoanParameters, LoanSimulation, PaymentSchedule]
+      +get_all_loan_simulations_by_user_id(user_id): List[LoanSimulation]
+    }
+  }
+
+  ' Infrastructure layer
+  package "infrastructure" {
+    package "repositories" {
+      class LoanParametersRepository {
+        -loan_parameters_mysql_repository: LoanParametersMySQLRepository
+        +__init__(db)
+        +create_loan_parameters(): LoanParameters
+        +get_by_loan_simulation_id(loan_simulation_id): Optional[LoanParameters]
+      }
+
+      class LoanSimulationRepository {
+        -loan_simulation_mysql_repository: LoanSimulationMySQLRepository
+        +__init__(db)
+        +create_loan_simulation(): LoanSimulation
+        +get_by_id(loan_simulation_id): Optional[LoanSimulation]
+        +get_all_by_user_id(user_id): List[LoanSimulation]
+      }
+
+      class PaymentScheduleRepository {
+        -payment_schedule_mysql_repository: PaymentScheduleMySQLRepository
+        +__init__(db)
+        +create_payment_schedule(): PaymentSchedule
+        +get_by_loan_simulation_id(loan_simulation_id): Optional[PaymentSchedule]
+      }
+
+      class PaymentPeriodRepository {
+        -payment_period_mysql_repository: PaymentPeriodMySQLRepository
+        +__init__(db)
+        +create_payment_period(): PaymentPeriod
+        +get_all_by_payment_schedule_id(payment_schedule_id): List[PaymentPeriod]
+      }
+    }
+
+    package "persistence" {
+      package "model" {
+        class LoanParametersModel {
+          bank_entity: Mapped[str]
+          credit_term_in_months: Mapped[int]
+          initial_payment_amount: Mapped[float]
+          financed_amount: Mapped[float]
+          credit_price: Mapped[float]
+          tea_percentage: Mapped[float]
+          payment_frequency: Mapped[str]
+          balloon_payment_percentage: Mapped[float]
+          vehicular_insurance_enabled: Mapped[bool]
+          vehicular_insurance_rate: Mapped[float]
+          mortgage_protection_insurance_enabled: Mapped[bool]
+          mortgage_protection_insurance_rate: Mapped[float]
+          grace_period_enabled: Mapped[bool]
+          grace_period_type: Mapped[str]
+          grace_period_in_months: Mapped[int]
+          vehicle_id: Mapped[str]
+          user_id: Mapped[str]
+        }
+
+        class LoanSimulationModel {
+          loan_parameters_id: Mapped[str]
+          payment_schedule_id: Mapped[str]
+          tcea_percentage: Mapped[float]
+          ballon_payment_amount: Mapped[float]
+          van: Mapped[float]
+          tir: Mapped[float]
+          grace_interest: Mapped[float]
+          user_id: Mapped[str]
+        }
+
+        class PaymentPeriodModel {
+          period_number: Mapped[float]
+          current_balance: Mapped[float]
+          interest_amount: Mapped[float]
+          amortization_amount: Mapped[float]
+          mortgage_protection_insurance_amount: Mapped[float]
+          vehicular_insurance_amount: Mapped[float]
+          total_payment: Mapped[float]
+          final_balance: Mapped[float]
+          net_flow: Mapped[float]
+          is_balloon: Mapped[bool]
+          is_grace_period: Mapped[bool]
+          payment_date: Mapped[datetime]
+          payment_schedule_id: Mapped[str]
+        }
+
+        class PaymentScheduleModel {
+          total_interest: Mapped[float]
+          total_amortization: Mapped[float]
+          total_mortgage_protection_insurance: Mapped[float]
+          total_vehicular_insurance: Mapped[float]
+          total_payment: Mapped[float]
+          total_grace_interest: Mapped[float]
+        }
+      }
+
+      package "repositories" {
+        class LoanParametersMySQLRepository {
+          +__init__(db)
+          +to_model(loan_parameters): LoanParametersModel
+          +to_entity(loan_parameters_model): LoanParameters
+          +get_all_by_user_id(user_id): List[LoanParameters]
+        }
+
+        class LoanSimulationMySQLRepository {
+          +__init__(db)
+          +to_model(loan_simulation): LoanSimulationModel
+          +to_entity(loan_simulation_model): LoanSimulation
+          +get_all_by_user_id(user_id): List[LoanSimulation]
+          +get_by_loan_parameters_id(loan_parameters_id): Optional[LoanSimulation]
+        }
+
+        class PaymentPeriodMySQLRepository {
+          +__init__(db)
+          +to_model(payment_period): PaymentPeriodModel
+          +to_entity(payment_period_model): PaymentPeriod
+          +get_all_by_payment_schedule_id(payment_schedule_id): List[PaymentPeriod]
+        }
+
+        class PaymentScheduleMySQLRepository {
+          +__init__(db)
+          +to_model(payment_schedule): PaymentScheduleModel
+          +to_entity(payment_schedule_model): PaymentSchedule
+          +get_by_loan_simulation_id(loan_simulation_id): Optional[PaymentSchedule]
+        }
+      }
+    }
+  }
+
+  ' Interface layer
+  package "interfaces" {
+    class analytics_api {
+      +calculate_payment_schedule(): PaymentScheduleResponse
+      +get_all_loan_simulations_by_user_id(): LoanSimulationWrapper
+      +get_loan_simulation_summary_by_id(): LoanSimulationSummaryResponse
+    }
+  }
+}
+
+' Analytics Bounded Context relationships
+analytics_api ..> SmartPurchaseApplicationService : uses
+SmartPurchaseApplicationService --> PaymentPeriodRepository : uses
+SmartPurchaseApplicationService --> PaymentScheduleRepository : uses
+SmartPurchaseApplicationService --> LoanSimulationRepository : uses
+SmartPurchaseApplicationService --> LoanParametersRepository : uses
+SmartPurchaseApplicationService --> SmartPurchaseService : uses
+PaymentPeriodRepository --> PaymentPeriodMySQLRepository : uses
+PaymentScheduleRepository --> PaymentScheduleMySQLRepository : uses
+LoanSimulationRepository --> LoanSimulationMySQLRepository : uses
+LoanParametersRepository --> LoanParametersMySQLRepository : uses
+PaymentPeriodMySQLRepository --> PaymentPeriodModel : uses
+PaymentScheduleMySQLRepository --> PaymentScheduleModel : uses
+LoanSimulationMySQLRepository --> LoanSimulationModel : uses
+LoanParametersMySQLRepository --> LoanParametersModel : uses
+PaymentPeriodMySQLRepository --|> BaseRepository : extends
+PaymentScheduleMySQLRepository --|> BaseRepository : extends
+LoanSimulationMySQLRepository --|> BaseRepository : extends
+LoanParametersMySQLRepository --|> BaseRepository : extends
+PaymentPeriodModel --> BaseModelORM : uses
+PaymentScheduleModel --> BaseModelORM : uses
+LoanParametersModel --> BaseModelORM : uses
+LoanSimulationModel --> BaseModelORM : uses
+PaymentPeriodMySQLRepository ..> PaymentPeriod : creates
+PaymentScheduleMySQLRepository ..> PaymentSchedule : creates
+LoanSimulationMySQLRepository ..> LoanSimulation : creates
+LoanParametersMySQLRepository ..> LoanParameters : creates
+SmartPurchaseService --> FinancialIndicatorAlgorithm : uses
+SmartPurchaseService --> FrenchMethodAlgorithm : uses
+SmartPurchaseService --> InsuranceAlgorithm : uses
+SmartPurchaseService --> GracePeriodAlgorithm : uses
+SmartPurchaseService ..> LoanParameters : creates
+SmartPurchaseService ..> LoanSimulation : creates
+SmartPurchaseService ..> PaymentPeriod : creates
+SmartPurchaseService ..> PaymentSchedule : creates
+PaymentSchedule *-- PaymentPeriod : wraps
+PaymentSchedule --|> BaseEntity : inherits
+PaymentPeriod --|> BaseEntity : inherits
+LoanParameters --|> BaseEntity : inherits
+LoanSimulation --|> BaseEntity : inherits
+User --> LoanParameters : provides input for
+User --> LoanSimulation : performs
+LoanSimulation --> LoanParameters : uses
+LoanParameters --> Vehicle : references
+LoanParameters --> PaymentSchedule : produces
+analytics_api ..> iam_api : authenticates request
+
+' Database relationships
+UserModel --> db : uses
+ProfileModel --> db : uses
+VehicleModel --> db : uses
+LoanSimulationModel --> db : uses
+LoanParametersModel --> db : uses
+PaymentPeriodModel --> db : uses
+PaymentScheduleModel --> db : uses
+init_db --> UserModel : creates table
+init_db --> ProfileModel : creates table
+init_db --> VehicleModel : creates table
+init_db --> LoanSimulationModel : creates table
+init_db --> LoanParametersModel : creates table
+init_db --> PaymentPeriodModel : creates table
+init_db --> PaymentScheduleModel : creates table
+app ..> iam_api : registers
+app ..> profiles_api : registers
+app ..> vehicles_api : registers
+app ..> analytics_api : registers
+app ..> init_db : initializes
+
+@enduml
