@@ -5,6 +5,10 @@ from analytics.domain.constants import VehicleInsuranceConstants, MortgageInsura
 
 
 class FrenchMethodAlgorithm:
+    """French method algorithm for calculating loan amortization schedules.
+
+    This class provides methods to calculate the financed amount, number of periods, effective rate, balloon fee, period vehicular insurance, mortgage protection factor, constant installment, and period mortgage protection value.
+    """
 
     def __init__(
         self,
@@ -48,13 +52,17 @@ class FrenchMethodAlgorithm:
 
         self.payment_periods = []
 
+        self.net_flows = []
+
+        self.irr = 0.0 # TIR
+        self.tcea = 0.0 # TCEA
+        self.npv = 0.0 # VAN
+
         self._calculate_all()
 
-    # -------------------------
-    # CONFIG CALCULATIONS
-    # -------------------------
-
     def _calculate_all(self):
+        """ Calculate all the values that are needed for the algorithm. """
+
         self._calculate_periods()
         self._calculate_financed_amount()
         self._calculate_effective_rate()
@@ -65,6 +73,8 @@ class FrenchMethodAlgorithm:
         self._calculate_constant_installment()
 
     def _calculate_periods(self):
+        """ Calculate the number of periods and the periods in days based on the period type. """
+
         match self.period_type:
             case "MONTHLY":
                 self.number_of_periods = int(self.total_number_of_years * 12)
@@ -82,16 +92,24 @@ class FrenchMethodAlgorithm:
                 raise ValueError("Invalid period type")
 
     def _calculate_financed_amount(self):
+        """ Calculate the financed amount based on the vehicle cost and down payment percentage. """
+
         down = self.vehicle_cost * self.down_payment_percentage
         self.financed_amount = self.vehicle_cost - down
 
     def _calculate_effective_rate(self):
+        """ Calculate the effective rate based on the TEA and the number of periods in days. """
+
         self.period_effective_rate = (pow(1 + self.tea, self.periods_in_days / 360)) - 1
 
     def _calculate_balloon_fee(self):
+        """ Calculate the balloon fee based on the vehicle cost and balloon payment percentage. """
+
         self.balloon_payment_fee = self.vehicle_cost * self.balloon_payment_percentage
 
     def _calculate_insurance(self):
+        """ Calculate the period vehicular insurance based on the vehicle type and the number of periods in days. """
+
         match self.vehicle_type:
             case "LOW_RISK_1":
                 rate = VehicleInsuranceConstants.LOW_RISK_1
@@ -113,16 +131,22 @@ class FrenchMethodAlgorithm:
         self.period_vehicular_insurance = self.vehicle_cost * rate * (self.periods_in_days / 360)
 
     def _calculate_mortgage_factor(self):
+        """ Calculate the mortgage protection factor based on the number of periods by the number of days. """
+
         annual = MortgageInsuranceConstants.DEFAULT_VALUE * 12
         self.mortgage_protection_factor = annual * (self.periods_in_days / 360)
 
     def _calculate_grace_periods(self):
+        """ Calculate the number of grace periods based on the grace period type and grace period in months. """
+
         if self.grace_period_type == "NONE":
             self.grace_period_in_periods = 0
         else:
             self.grace_period_in_periods = int(self.grace_period_in_months)
 
     def _calculate_constant_installment(self):
+        """ Calculate the constant installment based on the financed amount, effective rate, balloon fee, and number of periods. """
+
         n = self.number_of_periods
         r = self.period_effective_rate
 
@@ -138,19 +162,91 @@ class FrenchMethodAlgorithm:
     # -------------------------
 
     def interest(self, balance):
+        """ Calculate the interest for a period. """
+
         return balance * self.period_effective_rate
 
     def amortization(self, interest):
+        """ Calculate the amortization for a period. """
+
         return self.constant_installment - interest
 
     def mortgage(self, balance):
+        """ Calculate the mortgage insurance for a period. """
+
         return balance * self.mortgage_protection_factor
+
+    # -------------------------
+    # FINANCIAL INDICATORS
+    # -------------------------
+
+    def _build_cashflows(self):
+        """Build the cashflows for the periods.
+
+        t=0 -> + financed amount
+        t>0 -> - payments
+        """
+
+        self.net_flows = [self.financed_amount]
+
+        for payment in self.payment_periods:
+            self.net_flows.append(payment["net_flow"])
+
+    def _calculate_irr(self, tolerance=1e-10, max_iterations=100):
+        """ Calculate the Internal Rate of Return (IRR) using Newton's method. """
+
+        cashflows = self.net_flows
+        guess = self.period_effective_rate
+        rate = guess
+
+        for _ in range(max_iterations):
+            npv = 0.0
+            derivative = 0.0
+
+            for t, cf in enumerate(cashflows):
+                npv += cf / ((1 + rate) ** t)
+                if t > 0:
+                    derivative -= (
+                            t * cf /
+                            ((1 + rate) ** (t + 1))
+                    )
+
+            if abs(npv) < tolerance:
+                self.irr = rate
+                return
+
+            if abs(derivative) < tolerance:
+                break
+
+            rate -= npv / derivative
+
+        self.irr = rate
+
+    def _calculate_tcea(self):
+        """ Calculate the Effective Annual Cost Rate (TCEA or EACR) using the IRR."""
+
+        self.tcea = (
+            (1 + self.irr)
+            ** (360 / self.periods_in_days)
+        ) - 1
+
+    def _calculate_npv(self):
+        """ Calculate the Net Present Value (NPV) using the cashflows. """
+
+        rate = self.period_effective_rate / (1 + self.period_effective_rate)
+
+        self.npv = sum(
+            cf / ((1 + rate) ** t)
+            for t, cf in enumerate(self.net_flows)
+        )
 
     # -------------------------
     # EXECUTION
     # -------------------------
 
     def perform(self):
+        """ Perform the French method algorithm and calculate the payment periods. """
+
         self.payment_periods.clear()
 
         balance = self.financed_amount
@@ -160,7 +256,6 @@ class FrenchMethodAlgorithm:
         for _ in range(self.grace_period_in_periods):
 
             date += timedelta(days=self.periods_in_days)
-
             interest = self.interest(balance)
 
             if self.grace_period_type == "PARTIAL":
@@ -169,6 +264,7 @@ class FrenchMethodAlgorithm:
                 total = interest + mortgage + vehicular
                 amort = 0.0
                 end = balance
+                grace_type = "PARTIAL"
 
             else:  # TOTAL
                 mortgage = 0.0
@@ -176,6 +272,7 @@ class FrenchMethodAlgorithm:
                 amort = 0.0
                 total = 0.0
                 end = balance
+                grace_type = "TOTAL"
 
             self.payment_periods.append(
                 {
@@ -187,7 +284,8 @@ class FrenchMethodAlgorithm:
                     "mortgage": mortgage,
                     "vehicular": vehicular,
                     "total": total,
-                    "grace": True,
+                    "grace": grace_type,
+                    "net_flow": 0.0,
                 }
             )
 
@@ -219,8 +317,15 @@ class FrenchMethodAlgorithm:
                     "mortgage": mortgage,
                     "vehicular": vehicular,
                     "total": total,
-                    "grace": False,
+                    "grace": "NONE",
                 }
             )
 
             balance = end
+
+        # ---------------- FINANCIAL INDICATORS ----------------
+
+        self._build_cashflows()
+        self._calculate_irr()
+        self._calculate_tcea()
+        self._calculate_npv()
