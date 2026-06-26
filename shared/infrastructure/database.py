@@ -20,6 +20,7 @@ def init_db():
     Imports ORM models from the bounded contexts at call time through deferred imports.
     """
     from iam.infrastructure.models import UserModel
+    from analytics.infrastructure.models import LoanParametersModel, LoanFinancialIndicatorsModel, PaymentScheduleModel, PaymentPeriodModel
 
     should_close = db.is_closed()
     if should_close:
@@ -27,6 +28,10 @@ def init_db():
 
     db.create_tables([
         UserModel,
+        LoanParametersModel,
+        LoanFinancialIndicatorsModel,
+        PaymentScheduleModel,
+        PaymentPeriodModel,
     ], safe=True)
 
     if should_close and not db.is_closed():

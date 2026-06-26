@@ -10,10 +10,10 @@ class LoanParameterService:
             total_years: int,
             vehicle_price: float,
             vehicle_type: str,
-            down_payment_percentage: float,
+            down_payment: float,
             financed_amount: float,
             tea_percentage: float,
-            balloon_payment_percentage: float,
+            balloon_payment: float,
             grace_period_type: str,
             grace_period_in_months: int,
             vehicle_id: int,
@@ -27,9 +27,9 @@ class LoanParameterService:
             if vehicle_price <= 0:
                 raise ValueError("Vehicle price must be greater than 0")
 
-            down_payment_percentage = float(down_payment_percentage)
-            if down_payment_percentage < 0 or down_payment_percentage > 1:
-                raise ValueError("Down payment percentage must be between 0 and 1")
+            down_payment_percentage = float(down_payment)
+            if down_payment_percentage < 0:
+                raise ValueError("Down payment must be greater than 0")
 
             financed_amount = float(financed_amount)
             if financed_amount <= 0:
@@ -39,9 +39,9 @@ class LoanParameterService:
             if tea_percentage < 0 or tea_percentage > 1:
                 raise ValueError("TEA percentage must be between 0 and 1")
 
-            balloon_payment_percentage = float(balloon_payment_percentage)
-            if balloon_payment_percentage < 0 or balloon_payment_percentage > 1:
-                raise ValueError("Balloon payment percentage must be between 0 and 1")
+            balloon_payment = float(balloon_payment)
+            if balloon_payment < 0:
+                raise ValueError("Balloon payment must be greater 0")
 
             grace_period_in_months = int(grace_period_in_months)
             if grace_period_in_months < 0:
@@ -61,10 +61,10 @@ class LoanParameterService:
             total_years=total_years,
             vehicle_price=vehicle_price,
             vehicle_type=vehicle_type,
-            down_payment_percentage=down_payment_percentage,
+            down_payment=down_payment,
             financed_amount=financed_amount,
             tea_percentage=tea_percentage,
-            balloon_payment_percentage=balloon_payment_percentage,
+            balloon_payment=balloon_payment,
             grace_period_type=grace_period_type,
             grace_period_in_months=grace_period_in_months,
             vehicle_id=vehicle_id,

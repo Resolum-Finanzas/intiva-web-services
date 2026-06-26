@@ -10,11 +10,10 @@ class LoanParameters:
         total_years (int): The total number of years for the loan.
         vehicle_price (float): The price of the vehicle being financed.
         vehicle_type (str): The type of vehicle being financed.
-        down_payment_percentage (float): The percentage of the vehicle price that is being paid as a down payment.
+        down_payment (float): The percentage of the vehicle price that is being paid as a down payment.
         financed_amount (float): The amount of the loan that is being financed.
         tea_percentage (float): The annual effective interest rate (TEA) percentage for the loan.
-        balloon_payment_percentage (float): The percentage of the financed amount that is being paid as a balloon payment.
-        grace_period_enabled (bool): A boolean indicating whether a grace period is enabled for the loan.
+        balloon_payment (float): The percentage of the financed amount that is being paid as a balloon payment.
         grace_period_type (str): The type of grace period for the loan (e.g., "NONE", "PARTIAL", "TOTAL").
         grace_period_in_months (int): The number of months for the grace period.
         vehicle_id (int): The ID of the vehicle being financed.
@@ -29,10 +28,10 @@ class LoanParameters:
             total_years: int,
             vehicle_price: float,
             vehicle_type: str,
-            down_payment_percentage: float,
+            down_payment: float,
             financed_amount: float,
             tea_percentage: float,
-            balloon_payment_percentage: float,
+            balloon_payment: float,
             grace_period_type: str, # NONE, PARTIAL, TOTAL
             vehicle_id: int,
             user_id: int,
@@ -45,11 +44,11 @@ class LoanParameters:
         self.total_years = total_years
         self.vehicle_price = vehicle_price
         self.vehicle_type = vehicle_type
-        self.down_payment_percentage = down_payment_percentage
+        self.down_payment = down_payment
         self.financed_amount = financed_amount
         self.period_type = period_type
         self.tea_percentage = tea_percentage
-        self.balloon_payment_percentage = balloon_payment_percentage
+        self.balloon_payment = balloon_payment
         self.grace_period_type = grace_period_type
         self.grace_period_in_months = grace_period_in_months
         self.vehicle_id = vehicle_id
