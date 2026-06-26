@@ -114,10 +114,10 @@ class PaymentPeriod:
     Attributes:
         period_number (int): The number of the payment period.
         balance_start (float): The balance at the start of the payment period.
-        interest_amount (float): The amount of interest paid during the payment period.
-        amortization_amount (float): The amount of principal paid during the payment period.
-        mortgage_protection_insurance_amount (float): The amount of mortgage protection insurance paid during the payment period.
-        vehicular_insurance_amount (float): The amount of vehicular insurance paid during the payment period.
+        interest (float): The amount of interest paid during the payment period.
+        amortization (float): The amount of principal paid during the payment period.
+        mortgage (float): The amount of mortgage protection insurance paid during the payment period.
+        vehicular_insurance (float): The amount of vehicular insurance paid during the payment period.
         total_payment (float): The total amount paid during the payment period, including interest, amortization, and insurance.
         balance_end (float): The balance at the end of the payment period.
         is_grace_period (bool): A boolean indicating whether the payment period is a grace period.

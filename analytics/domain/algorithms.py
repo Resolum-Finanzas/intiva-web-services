@@ -175,8 +175,7 @@ class FrenchMethodAlgorithm:
                 vehicular = 0.0
                 amort = 0.0
                 total = 0.0
-                end = balance + interest
-                balance = end
+                end = balance
 
             self.payment_periods.append(
                 {
