@@ -211,9 +211,17 @@ class PaymentScheduleService:
             loan_parameters_id=loan_parameters_id,
         )
 
+        return payment_schedule
+
+    @staticmethod
+    def add_id_to_payment_periods(
+            payment_schedule: PaymentSchedule,
+            payment_periods: list[PaymentPeriod]
+    ) -> tuple[PaymentSchedule, list[PaymentPeriod]]:
+        """ Add the payment schedule ID to each payment period. """
+
         for period in payment_periods:
             period.payment_schedule_id = payment_schedule.payment_schedule_id
+            payment_schedule.add_payment_period(period)
 
-        payment_schedule.payment_periods = payment_periods
-
-        return payment_schedule
+        return payment_schedule, payment_periods

@@ -1,4 +1,4 @@
-from peewee import Model, AutoField, CharField, IntegerField, FloatField, ForeignKeyField
+from peewee import Model, AutoField, CharField, IntegerField, FloatField
 
 from shared.infrastructure.database import db
 
