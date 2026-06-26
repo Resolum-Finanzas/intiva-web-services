@@ -112,46 +112,43 @@ class PaymentPeriod:
     It also indicates whether the period is a balloon payment or a grace period.
 
     Attributes:
-        period_number (int): The number of the payment period (e.g., 1 for the first period).
-        current_balance (float): The outstanding balance at the beginning of the period.
-        interest_amount (float): The amount of interest paid during the period.
-        amortization_amount (float): The amount of principal paid during the period.
-        mortgage_protection_insurance_amount (float): The amount paid for mortgage protection insurance during the period.
-        vehicular_insurance_amount (float): The amount paid for vehicular insurance during the period.
-        total_payment (float): The total payment made during the period, including interest, amortization, and insurance amounts.
-        final_balance_at_end_of_period (float): The outstanding balance at the end of the period after making the payment.
-        is_balloon (bool): Indicates whether this payment is a balloon payment.
-        is_grace_period (bool): Indicates whether this period is a grace period where no payments are made.
-        payment_date (datetime): The date on which the payment is made.
-        payment_schedule_id (str): The ID of the payment schedule that this payment period belongs to.
+        period_number (int): The number of the payment period.
+        balance_start (float): The balance at the start of the payment period.
+        interest_amount (float): The amount of interest paid during the payment period.
+        amortization_amount (float): The amount of principal paid during the payment period.
+        mortgage_protection_insurance_amount (float): The amount of mortgage protection insurance paid during the payment period.
+        vehicular_insurance_amount (float): The amount of vehicular insurance paid during the payment period.
+        total_payment (float): The total amount paid during the payment period, including interest, amortization, and insurance.
+        balance_end (float): The balance at the end of the payment period.
+        is_grace_period (bool): A boolean indicating whether the payment period is a grace period.
+        payment_date (str): The date of the payment for the period.
+        payment_schedule_id (Optional[int]): An optional ID linking to a specific payment schedule.
     """
 
     def __init__(
             self,
             period_number: int,
-            current_balance: float,
-            interest_amount: float,
-            amortization_amount: float,
-            mortgage_protection_insurance_amount: float,
-            vehicular_insurance_amount: float,
+            date: str,
+            balance_start: float,
+            balance_end: float,
+            interest: float,
+            amortization: float,
+            mortgage: float,
+            vehicular_insurance: float,
             total_payment: float,
-            final_balance_at_end_of_period: float,
-            is_balloon: bool,
             is_grace_period: bool,
-            payment_date: datetime,
             payment_period_id: Optional[int] = None
     ):
         self.period_number = period_number
-        self.current_balance = current_balance
-        self.interest_amount = interest_amount
-        self.amortization_amount = amortization_amount
-        self.mortgage_protection_insurance_amount= mortgage_protection_insurance_amount
-        self.vehicular_insurance_amount = vehicular_insurance_amount
+        self.balance_start = balance_start
+        self.interest = interest
+        self.amortization = amortization
+        self.mortgage= mortgage
+        self.vehicular_insurance = vehicular_insurance
         self.total_payment = total_payment
-        self.final_balance_at_end_of_period = final_balance_at_end_of_period
-        self.is_balloon = is_balloon
+        self.balance_end = balance_end
         self.is_grace_period = is_grace_period
-        self.payment_date = payment_date
+        self.payment_date = date
         self.payment_schedule_id = payment_period_id
 
 
