@@ -133,3 +133,67 @@ class TestEffectiveRate:
         print()
         print(algorithm.total_payments_for_periods)
         assert algorithm.payment_mortgage_protection_values[35] == pytest.approx(last_mortgage_protection)
+
+    def test_first_amortization_payment_is_correct_according_to_example(self):
+        # Arrange
+        first_amortization_payment = 262.77106883487136
+
+        vehicle_cost = 28500.00
+        vehicle_type = "PICK_UP"
+        down_payment_percentage = 0.25
+        balloon_payment_percentage = 0.35
+        tea = 0.1320
+        initial_payment_date = "2024-01-01"
+        total_number_of_years = 3
+        grace_period_type = "NONE"
+        grace_period_in_months = 6
+
+        # Act
+        algorithm = FrenchMethodAlgorithm(
+            vehicle_cost=vehicle_cost,
+            vehicle_type=vehicle_type,
+            down_payment_percentage=down_payment_percentage,
+            balloon_payment_percentage=balloon_payment_percentage,
+            tea=tea,
+            initial_payment_date=initial_payment_date,
+            total_number_of_years=total_number_of_years,
+            grace_period_type=grace_period_type,
+            grace_period_in_months=grace_period_in_months
+        )
+
+        algorithm.perform()
+
+        # Assert
+        assert algorithm.payment_amortization_amounts[0] == pytest.approx(first_amortization_payment)
+
+    def test_last_amortization_payment_is_correct_according_to_example(self):
+        # Arrange
+        last_amortization_payment = 377.2503278742322
+
+        vehicle_cost = 28500.00
+        vehicle_type = "PICK_UP"
+        down_payment_percentage = 0.25
+        balloon_payment_percentage = 0.35
+        tea = 0.1320
+        initial_payment_date = "2024-01-01"
+        total_number_of_years = 3
+        grace_period_type = "NONE"
+        grace_period_in_months = 6
+
+        # Act
+        algorithm = FrenchMethodAlgorithm(
+            vehicle_cost=vehicle_cost,
+            vehicle_type=vehicle_type,
+            down_payment_percentage=down_payment_percentage,
+            balloon_payment_percentage=balloon_payment_percentage,
+            tea=tea,
+            initial_payment_date=initial_payment_date,
+            total_number_of_years=total_number_of_years,
+            grace_period_type=grace_period_type,
+            grace_period_in_months=grace_period_in_months
+        )
+
+        algorithm.perform()
+
+        # Assert
+        assert algorithm.payment_amortization_amounts[35] == pytest.approx(last_amortization_payment)
