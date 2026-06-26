@@ -49,7 +49,7 @@ class TestLoanSimulationProcess:
 
         schedule = algorithm.payment_periods
 
-        first_grace_period = next(p for p in schedule if p["grace"] is True)
+        first_grace_period = next(p for p in schedule if p["grace"] is "PARTIAL")
 
         assert first_grace_period["start"] == pytest.approx(expected)
         assert first_grace_period["end"] == pytest.approx(expected)

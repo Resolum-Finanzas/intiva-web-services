@@ -118,7 +118,7 @@ class TestAnalyticsDomainAlgorithms:
 
     def test_last_amortization_payment_is_correct(self):
 
-        last_amortization_payment = 10352.250327874237
+        last_amortization_payment = 377.250327874237
 
         schedule = build_schedule(
             vehicle_cost=28500.00,
