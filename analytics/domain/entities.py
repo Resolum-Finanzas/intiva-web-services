@@ -112,7 +112,9 @@ class PaymentPeriod:
             amortization: float,
             mortgage: float,
             vehicular_insurance: float,
+            balloon_fee: float,
             total_payment: float,
+            net_flow: float,
             grace_period_type: str,
             payment_schedule_id: Optional[int] = None,
             payment_period_id: Optional[int] = None
@@ -127,6 +129,8 @@ class PaymentPeriod:
         self.balance_end = balance_end
         self.grace_period_type = grace_period_type
         self.payment_date = date
+        self.balloon_fee = balloon_fee
+        self.net_flow = net_flow
         self.payment_period_id = payment_period_id
         self.payment_schedule_id = payment_schedule_id
 

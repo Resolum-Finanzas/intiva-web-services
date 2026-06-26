@@ -67,8 +67,10 @@ class PaymentPeriodRepository:
             amortization=payment_period.amortization,
             mortgage=payment_period.mortgage,
             vehicular_insurance=payment_period.vehicular_insurance,
+            balloon_fee=payment_period.balloon_fee,
             total_payment=payment_period.total_payment,
             grace_period_type=payment_period.grace_period_type,
+            net_flow=payment_period.net_flow,
             payment_date=payment_period.payment_date,
             payment_schedule_id=payment_period.payment_schedule_id,
         )
@@ -122,7 +124,9 @@ class PaymentScheduleRepository:
                 amortization=period.amortization,
                 mortgage=period.mortgage,
                 vehicular_insurance=period.vehicular_insurance,
+                balloon_fee=period.balloon_fee,
                 total_payment=period.total_payment,
+                net_flow=period.net_flow,
                 grace_period_type=period.grace_period_type,
                 payment_schedule_id=payment_schedule_model.id,
             )
