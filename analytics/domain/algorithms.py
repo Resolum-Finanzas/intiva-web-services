@@ -189,8 +189,10 @@ class FrenchMethodAlgorithm:
 
         self.net_flows = [self.financed_amount]
 
-        for payment in self.payment_periods:
-            self.net_flows.append(payment["net_flow"])
+        self.net_flows.extend(
+            payment["net_flow"]
+            for payment in self.payment_periods
+        )
 
     def _calculate_irr(self, tolerance=1e-10, max_iterations=100):
         """ Calculate the Internal Rate of Return (IRR) using Newton's method. """
@@ -245,37 +247,51 @@ class FrenchMethodAlgorithm:
     # -------------------------
 
     def perform(self):
-        """ Perform the French method algorithm and calculate the payment periods. """
+        """Perform the French method algorithm and calculate the payment periods."""
 
         self.payment_periods.clear()
 
         balance = self.financed_amount
         date = self.initial_payment_date
+        period = 1
 
         # ---------------- GRACE ----------------
+
         for _ in range(self.grace_period_in_periods):
 
             date += timedelta(days=self.periods_in_days)
+
             interest = self.interest(balance)
 
             if self.grace_period_type == "PARTIAL":
+
                 mortgage = self.mortgage(balance)
                 vehicular = self.period_vehicular_insurance
-                total = interest + mortgage + vehicular
+
                 amort = 0.0
+                balloon_fee = 0.0
+
+                total = interest + mortgage + vehicular + balloon_fee
                 end = balance
                 grace_type = "PARTIAL"
 
             else:  # TOTAL
+
                 mortgage = 0.0
                 vehicular = 0.0
+
                 amort = 0.0
+                balloon_fee = 0.0
+
                 total = 0.0
                 end = balance
                 grace_type = "TOTAL"
 
+            net_flow = -total
+
             self.payment_periods.append(
                 {
+                    "period": period,
                     "date": date.strftime("%Y-%m-%d"),
                     "start": balance,
                     "end": end,
@@ -283,13 +299,18 @@ class FrenchMethodAlgorithm:
                     "amortization": amort,
                     "mortgage": mortgage,
                     "vehicular": vehicular,
+                    "balloon_fee": balloon_fee,
                     "total": total,
+                    "net_flow": net_flow,
                     "grace": grace_type,
-                    "net_flow": 0.0,
                 }
             )
 
+            balance = end
+            period += 1
+
         # ---------------- FRENCH ----------------
+
         for i in range(self.number_of_periods):
 
             date += timedelta(days=self.periods_in_days)
@@ -297,18 +318,36 @@ class FrenchMethodAlgorithm:
             interest = self.interest(balance)
             amort = self.amortization(interest)
 
-            if i == self.number_of_periods - 1:
-                amort = balance
+            balloon_fee = 0.0
 
-            end = balance - amort
+            # Último período
+            if i == self.number_of_periods - 1:
+
+                amort = balance - self.balloon_payment_fee
+                balloon_fee = self.balloon_payment_fee
+                remaining_balance = balance - amort
+                end = 0.0
+
+            else:
+
+                end = balance - amort
 
             mortgage = self.mortgage(balance)
             vehicular = self.period_vehicular_insurance
 
-            total = interest + amort + mortgage + vehicular
+            total = (
+                    interest
+                    + amort
+                    + mortgage
+                    + vehicular
+                    + balloon_fee
+            )
+
+            net_flow = -total
 
             self.payment_periods.append(
                 {
+                    "period": period,
                     "date": date.strftime("%Y-%m-%d"),
                     "start": balance,
                     "end": end,
@@ -316,12 +355,15 @@ class FrenchMethodAlgorithm:
                     "amortization": amort,
                     "mortgage": mortgage,
                     "vehicular": vehicular,
+                    "balloon_fee": balloon_fee,
                     "total": total,
+                    "net_flow": net_flow,
                     "grace": "NONE",
                 }
             )
 
             balance = end
+            period += 1
 
         # ---------------- FINANCIAL INDICATORS ----------------
 
