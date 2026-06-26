@@ -3,259 +3,166 @@ import pytest
 from analytics.domain.algorithms import FrenchMethodAlgorithm
 
 
-class TestEffectiveRate:
+def build_schedule(**kwargs):
+    algorithm = FrenchMethodAlgorithm(**kwargs)
+    algorithm.perform()
+    return algorithm.payment_periods
+
+
+class TestAnalyticsDomainAlgorithms:
+
     def test_constant_installment_is_correct_according_to_example(self):
-        # Arrange
         constant_installment = 484.76596436935637
 
-        vehicle_cost = 28500.00
-        vehicle_type = "MEDIUM_RISK"
-        down_payment_percentage = 0.25
-        balloon_payment_percentage = 0.35
-        tea = 0.1320
-        initial_payment_date = "2024-01-01"
-        total_number_of_years = 3
-        grace_period_type = "NONE"
-        grace_period_in_months = 6
-
-        # Act
         algorithm = FrenchMethodAlgorithm(
-            vehicle_cost=vehicle_cost,
-            vehicle_type=vehicle_type,
-            down_payment_percentage=down_payment_percentage,
-            balloon_payment_percentage=balloon_payment_percentage,
-            tea=tea,
-            initial_payment_date=initial_payment_date,
-            total_number_of_years=total_number_of_years,
-            grace_period_type=grace_period_type,
-            grace_period_in_months=grace_period_in_months
+            vehicle_cost=28500.00,
+            vehicle_type="MEDIUM_RISK",
+            down_payment_percentage=0.25,
+            balloon_payment_percentage=0.35,
+            tea=0.1320,
+            initial_payment_date="2024-01-01",
+            total_number_of_years=3,
+            grace_period_type="NONE",
+            grace_period_in_months=6
         )
 
-        algorithm.perform()
-
-        # Assert
         assert algorithm.constant_installment == pytest.approx(constant_installment)
 
-    def test_constant_vehicular_insurance_payment_is_correct_according_to_example(self):
-        # Arrange
+        schedule = build_schedule(
+            vehicle_cost=algorithm.vehicle_cost,
+            vehicle_type=algorithm.vehicle_type,
+            down_payment_percentage=algorithm.down_payment_percentage,
+            balloon_payment_percentage=algorithm.balloon_payment_percentage,
+            tea=algorithm.tea,
+            initial_payment_date=algorithm.initial_payment_date.strftime("%Y-%m-%d"),
+            total_number_of_years=algorithm.total_number_of_years,
+            grace_period_type=algorithm.grace_period_type,
+            grace_period_in_months=algorithm.grace_period_in_months,
+        )
+
+        t0 = schedule[0]
+        t1 = schedule[1]
+
+        assert abs(
+            (t0["interest"] + t0["amortization"]) -
+            (t1["interest"] + t1["amortization"])
+        ) < 1e-6
+
+    def test_constant_vehicular_insurance_payment_is_correct(self):
+
         constant_vehicular_insurance = 171.7125
 
-        vehicle_cost = 28500.00
-        vehicle_type = "PICK_UP"
-        down_payment_percentage = 0.25
-        balloon_payment_percentage = 0.35
-        tea = 0.1320
-        initial_payment_date = "2024-01-01"
-        total_number_of_years = 3
-        grace_period_type = "NONE"
-        grace_period_in_months = 6
-
-        # Act
-        algorithm = FrenchMethodAlgorithm(
-            vehicle_cost=vehicle_cost,
-            vehicle_type=vehicle_type,
-            down_payment_percentage=down_payment_percentage,
-            balloon_payment_percentage=balloon_payment_percentage,
-            tea=tea,
-            initial_payment_date=initial_payment_date,
-            total_number_of_years=total_number_of_years,
-            grace_period_type=grace_period_type,
-            grace_period_in_months=grace_period_in_months
+        schedule = build_schedule(
+            vehicle_cost=28500.00,
+            vehicle_type="PICK_UP",
+            down_payment_percentage=0.25,
+            balloon_payment_percentage=0.35,
+            tea=0.1320,
+            initial_payment_date="2024-01-01",
+            total_number_of_years=3,
+            grace_period_type="NONE"
         )
 
-        algorithm.perform()
+        assert schedule[0]["vehicular"] == pytest.approx(constant_vehicular_insurance)
 
-        # Assert
-        assert algorithm.period_vehicular_insurance == pytest.approx(constant_vehicular_insurance)
+    def test_initial_mortgage_protection_is_correct(self):
 
-    def test_initial_mortgage_protection_is_correct_according_to_example(self):
-        # Arrange
         initial_mortgage_protection = 16.45875
 
-        vehicle_cost = 28500.00
-        vehicle_type = "PICK_UP"
-        down_payment_percentage = 0.25
-        balloon_payment_percentage = 0.35
-        tea = 0.1320
-        initial_payment_date = "2024-01-01"
-        total_number_of_years = 3
-        grace_period_type = "NONE"
-        grace_period_in_months = 6
-
-        # Act
-        algorithm = FrenchMethodAlgorithm(
-            vehicle_cost=vehicle_cost,
-            vehicle_type=vehicle_type,
-            down_payment_percentage=down_payment_percentage,
-            balloon_payment_percentage=balloon_payment_percentage,
-            tea=tea,
-            initial_payment_date=initial_payment_date,
-            total_number_of_years=total_number_of_years,
-            grace_period_type=grace_period_type,
-            grace_period_in_months=grace_period_in_months
+        schedule = build_schedule(
+            vehicle_cost=28500.00,
+            vehicle_type="PICK_UP",
+            down_payment_percentage=0.25,
+            balloon_payment_percentage=0.35,
+            tea=0.1320,
+            initial_payment_date="2024-01-01",
+            total_number_of_years=3,
+            grace_period_type="NONE"
         )
 
-        algorithm.perform()
+        assert schedule[0]["mortgage"] == pytest.approx(initial_mortgage_protection)
 
-        # Assert
-        assert algorithm.payment_mortgage_protection_values[0] == pytest.approx(initial_mortgage_protection)
+    def test_last_mortgage_protection_is_correct(self):
 
-    def test_last_mortgage_protection_is_correct_according_to_example(self):
-        # Arrange
         last_mortgage_protection = 7.971232752463162
 
-        vehicle_cost = 28500.00
-        vehicle_type = "PICK_UP"
-        down_payment_percentage = 0.25
-        balloon_payment_percentage = 0.35
-        tea = 0.1320
-        initial_payment_date = "2024-01-01"
-        total_number_of_years = 3
-        grace_period_type = "NONE"
-        grace_period_in_months = 6
-
-        # Act
-        algorithm = FrenchMethodAlgorithm(
-            vehicle_cost=vehicle_cost,
-            vehicle_type=vehicle_type,
-            down_payment_percentage=down_payment_percentage,
-            balloon_payment_percentage=balloon_payment_percentage,
-            tea=tea,
-            initial_payment_date=initial_payment_date,
-            total_number_of_years=total_number_of_years,
-            grace_period_type=grace_period_type,
-            grace_period_in_months=grace_period_in_months
+        schedule = build_schedule(
+            vehicle_cost=28500.00,
+            vehicle_type="PICK_UP",
+            down_payment_percentage=0.25,
+            balloon_payment_percentage=0.35,
+            tea=0.1320,
+            initial_payment_date="2024-01-01",
+            total_number_of_years=3,
+            grace_period_type="NONE"
         )
 
-        algorithm.perform()
+        assert schedule[-1]["mortgage"] == pytest.approx(last_mortgage_protection)
 
-        # Assert
-        assert algorithm.payment_mortgage_protection_values[35] == pytest.approx(last_mortgage_protection)
+    def test_first_amortization_payment_is_correct(self):
 
-    def test_first_amortization_payment_is_correct_according_to_example(self):
-        # Arrange
         first_amortization_payment = 262.77106883487136
 
-        vehicle_cost = 28500.00
-        vehicle_type = "PICK_UP"
-        down_payment_percentage = 0.25
-        balloon_payment_percentage = 0.35
-        tea = 0.1320
-        initial_payment_date = "2024-01-01"
-        total_number_of_years = 3
-        grace_period_type = "NONE"
-        grace_period_in_months = 6
-
-        # Act
-        algorithm = FrenchMethodAlgorithm(
-            vehicle_cost=vehicle_cost,
-            vehicle_type=vehicle_type,
-            down_payment_percentage=down_payment_percentage,
-            balloon_payment_percentage=balloon_payment_percentage,
-            tea=tea,
-            initial_payment_date=initial_payment_date,
-            total_number_of_years=total_number_of_years,
-            grace_period_type=grace_period_type,
-            grace_period_in_months=grace_period_in_months
+        schedule = build_schedule(
+            vehicle_cost=28500.00,
+            vehicle_type="PICK_UP",
+            down_payment_percentage=0.25,
+            balloon_payment_percentage=0.35,
+            tea=0.1320,
+            initial_payment_date="2024-01-01",
+            total_number_of_years=3,
+            grace_period_type="NONE"
         )
 
-        algorithm.perform()
+        assert schedule[0]["amortization"] == pytest.approx(first_amortization_payment)
 
-        # Assert
-        assert algorithm.payment_amortization_amounts[0] == pytest.approx(first_amortization_payment)
+    def test_last_amortization_payment_is_correct(self):
 
-    def test_last_amortization_payment_is_correct_according_to_example(self):
-        # Arrange
-        last_amortization_payment = 377.2503278742322
+        last_amortization_payment = 10352.250327874237
 
-        vehicle_cost = 28500.00
-        vehicle_type = "PICK_UP"
-        down_payment_percentage = 0.25
-        balloon_payment_percentage = 0.35
-        tea = 0.1320
-        initial_payment_date = "2024-01-01"
-        total_number_of_years = 3
-        grace_period_type = "NONE"
-        grace_period_in_months = 6
-
-        # Act
-        algorithm = FrenchMethodAlgorithm(
-            vehicle_cost=vehicle_cost,
-            vehicle_type=vehicle_type,
-            down_payment_percentage=down_payment_percentage,
-            balloon_payment_percentage=balloon_payment_percentage,
-            tea=tea,
-            initial_payment_date=initial_payment_date,
-            total_number_of_years=total_number_of_years,
-            grace_period_type=grace_period_type,
-            grace_period_in_months=grace_period_in_months
+        schedule = build_schedule(
+            vehicle_cost=28500.00,
+            vehicle_type="PICK_UP",
+            down_payment_percentage=0.25,
+            balloon_payment_percentage=0.35,
+            tea=0.1320,
+            initial_payment_date="2024-01-01",
+            total_number_of_years=3,
+            grace_period_type="NONE"
         )
 
-        algorithm.perform()
+        assert schedule[-1]["amortization"] == pytest.approx(last_amortization_payment)
 
-        # Assert
-        assert algorithm.payment_amortization_amounts[35] == pytest.approx(last_amortization_payment)
+    def test_first_total_payment_is_correct(self):
 
-    def test_first_total_payment_for_period_is_correct_according_to_example(self):
-        # Arrange
-        first_total_payment_for_period = 672.9372143693564
+        first_total_payment = 672.9372143693564
 
-        vehicle_cost = 28500.00
-        vehicle_type = "PICK_UP"
-        down_payment_percentage = 0.25
-        balloon_payment_percentage = 0.35
-        tea = 0.1320
-        initial_payment_date = "2024-01-01"
-        total_number_of_years = 3
-        grace_period_type = "NONE"
-        grace_period_in_months = 6
-
-        # Act
-        algorithm = FrenchMethodAlgorithm(
-            vehicle_cost=vehicle_cost,
-            vehicle_type=vehicle_type,
-            down_payment_percentage=down_payment_percentage,
-            balloon_payment_percentage=balloon_payment_percentage,
-            tea=tea,
-            initial_payment_date=initial_payment_date,
-            total_number_of_years=total_number_of_years,
-            grace_period_type=grace_period_type,
-            grace_period_in_months=grace_period_in_months
+        schedule = build_schedule(
+            vehicle_cost=28500.00,
+            vehicle_type="PICK_UP",
+            down_payment_percentage=0.25,
+            balloon_payment_percentage=0.35,
+            tea=0.1320,
+            initial_payment_date="2024-01-01",
+            total_number_of_years=3,
+            grace_period_type="NONE"
         )
 
-        algorithm.perform()
+        assert schedule[0]["total"] == pytest.approx(first_total_payment)
 
-        # Assert
-        assert algorithm.total_payments_for_periods[0] == pytest.approx(first_total_payment_for_period)
+    def test_last_total_payment_is_correct(self):
 
-    def test_last_total_payment_for_period_is_correct_according_to_example(self):
-        # Arrange
-        last_total_payment_for_period = 10639.44969712182
+        last_total_payment = 10639.44969712182
 
-        vehicle_cost = 28500.00
-        vehicle_type = "PICK_UP"
-        down_payment_percentage = 0.25
-        balloon_payment_percentage = 0.35
-        tea = 0.1320
-        initial_payment_date = "2024-01-01"
-        total_number_of_years = 3
-        grace_period_type = "NONE"
-        grace_period_in_months = 6
-
-        # Act
-        algorithm = FrenchMethodAlgorithm(
-            vehicle_cost=vehicle_cost,
-            vehicle_type=vehicle_type,
-            down_payment_percentage=down_payment_percentage,
-            balloon_payment_percentage=balloon_payment_percentage,
-            tea=tea,
-            initial_payment_date=initial_payment_date,
-            total_number_of_years=total_number_of_years,
-            grace_period_type=grace_period_type,
-            grace_period_in_months=grace_period_in_months
+        schedule = build_schedule(
+            vehicle_cost=28500.00,
+            vehicle_type="PICK_UP",
+            down_payment_percentage=0.25,
+            balloon_payment_percentage=0.35,
+            tea=0.1320,
+            initial_payment_date="2024-01-01",
+            total_number_of_years=3,
+            grace_period_type="NONE"
         )
 
-        algorithm.perform()
-
-        # Assert
-        assert algorithm.total_payments_for_periods[35] == pytest.approx(last_total_payment_for_period)
+        assert schedule[-1]["total"] == pytest.approx(last_total_payment)
