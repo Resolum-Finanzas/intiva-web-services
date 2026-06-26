@@ -66,10 +66,70 @@ class TestEffectiveRate:
         algorithm.perform()
 
         # Assert
+        assert algorithm.period_vehicular_insurance == pytest.approx(constant_vehicular_insurance)
+
+    def test_initial_mortgage_protection_is_correct_according_to_example(self):
+        # Arrange
+        initial_mortgage_protection = 16.45875
+
+        vehicle_cost = 28500.00
+        vehicle_type = "PICK_UP"
+        down_payment_percentage = 0.25
+        balloon_payment_percentage = 0.35
+        tea = 0.1320
+        initial_payment_date = "2024-01-01"
+        total_number_of_years = 3
+        grace_period_type = "NONE"
+        grace_period_in_months = 6
+
+        # Act
+        algorithm = FrenchMethodAlgorithm(
+            vehicle_cost=vehicle_cost,
+            vehicle_type=vehicle_type,
+            down_payment_percentage=down_payment_percentage,
+            balloon_payment_percentage=balloon_payment_percentage,
+            tea=tea,
+            initial_payment_date=initial_payment_date,
+            total_number_of_years=total_number_of_years,
+            grace_period_type=grace_period_type,
+            grace_period_in_months=grace_period_in_months
+        )
+
+        algorithm.perform()
+
+        # Assert
+        assert algorithm.payment_mortgage_protection_values[0] == pytest.approx(initial_mortgage_protection)
+
+    def test_last_mortgage_protection_is_correct_according_to_example(self):
+        # Arrange
+        last_mortgage_protection = 7.971232752463162
+
+        vehicle_cost = 28500.00
+        vehicle_type = "PICK_UP"
+        down_payment_percentage = 0.25
+        balloon_payment_percentage = 0.35
+        tea = 0.1320
+        initial_payment_date = "2024-01-01"
+        total_number_of_years = 3
+        grace_period_type = "NONE"
+        grace_period_in_months = 6
+
+        # Act
+        algorithm = FrenchMethodAlgorithm(
+            vehicle_cost=vehicle_cost,
+            vehicle_type=vehicle_type,
+            down_payment_percentage=down_payment_percentage,
+            balloon_payment_percentage=balloon_payment_percentage,
+            tea=tea,
+            initial_payment_date=initial_payment_date,
+            total_number_of_years=total_number_of_years,
+            grace_period_type=grace_period_type,
+            grace_period_in_months=grace_period_in_months
+        )
+
+        algorithm.perform()
+
+        # Assert
         print()
         print(algorithm.total_payments_for_periods)
-        print()
-        print(algorithm.payment_vehicular_insurance_values)
-        print()
-        print(algorithm.payment_mortgage_protection_values)
-        assert algorithm.period_vehicular_insurance == pytest.approx(constant_vehicular_insurance)
+        assert algorithm.payment_mortgage_protection_values[35] == pytest.approx(last_mortgage_protection)
