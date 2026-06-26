@@ -118,7 +118,9 @@ class PaymentPeriodService:
             amortization: float,
             mortgage: float,
             vehicular_insurance: float,
+            balloon_fee: float,
             total_payment: float,
+            net_flow: float,
             grace_period_type: str,
     ) -> PaymentPeriod:
         """ Create a new PaymentPeriod instance. """
@@ -172,8 +174,10 @@ class PaymentPeriodService:
             amortization=amortization,
             mortgage=mortgage,
             vehicular_insurance=vehicular_insurance,
+            balloon_fee=balloon_fee,
             total_payment=total_payment,
             grace_period_type=grace_period_type,
+            net_flow=net_flow,
         )
 
 

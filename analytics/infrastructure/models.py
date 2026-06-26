@@ -45,8 +45,10 @@ class PaymentPeriodModel(Model):
     amortization = FloatField()
     mortgage = FloatField()
     vehicular_insurance = FloatField()
+    balloon_fee = FloatField()
     total_payment = FloatField()
     grace_period_type = CharField(default="NONE")
+    net_flow = FloatField()
     payment_date = CharField()
     payment_schedule_id = IntegerField()
 
