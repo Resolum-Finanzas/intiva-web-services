@@ -64,8 +64,6 @@ class LoanFinancialIndicators:
         van (float): The net present value (VAN) of the loan.
         tir (float): The internal rate of return (TIR) of the loan.
         loan_parameters_id (int): The ID of the loan parameters associated with the financial indicators.
-        payment_schedule_id (int): The ID of the payment schedule that is associated with the financial indicators.
-        user_id (int): The ID of the user that is applying for the loan.
         loan_simulation_id (Optional[int]): An optional ID for the loan simulation associated with the financial indicators.
     """
 
@@ -75,8 +73,6 @@ class LoanFinancialIndicators:
             van: float,
             tir: float,
             loan_parameters_id: int,
-            payment_schedule_id: int,
-            user_id: int,
             loan_simulation_id: Optional[int] = None
     ):
         self.loan_simulation_id = loan_simulation_id
@@ -84,8 +80,6 @@ class LoanFinancialIndicators:
         self.van = van
         self.tir = tir
         self.loan_parameters_id = loan_parameters_id
-        self.payment_schedule_id = payment_schedule_id
-        self.user_id = user_id
 
 
 class PaymentPeriod:
@@ -120,6 +114,7 @@ class PaymentPeriod:
             vehicular_insurance: float,
             total_payment: float,
             grace_period_type: str,
+            payment_schedule_id: Optional[int] = None,
             payment_period_id: Optional[int] = None
     ):
         self.period_number = period_number
@@ -132,7 +127,8 @@ class PaymentPeriod:
         self.balance_end = balance_end
         self.grace_period_type = grace_period_type
         self.payment_date = date
-        self.payment_schedule_id = payment_period_id
+        self.payment_period_id = payment_period_id
+        self.payment_schedule_id = payment_schedule_id
 
 
 class PaymentSchedule:
@@ -155,6 +151,7 @@ class PaymentSchedule:
             total_mortgage_protection_insurance: float,
             total_vehicular_insurance: float,
             total_payment: float,
+            loan_parameters_id: int,
             payment_schedule_id: Optional[int] = None
     ):
         self.total_interest = total_interest
@@ -163,6 +160,7 @@ class PaymentSchedule:
         self.total_vehicular_insurance = total_vehicular_insurance
         self.total_payment = total_payment
         self.payment_schedule_id = payment_schedule_id
+        self.loan_parameters_id = loan_parameters_id
         self.payment_periods = []
 
     def add_payment_period(self, period: PaymentPeriod):

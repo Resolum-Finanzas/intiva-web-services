@@ -29,6 +29,7 @@ class PaymentScheduleModel(Model):
     total_mortgage_protection_insurance = FloatField()
     total_vehicular_insurance = FloatField()
     total_payment = FloatField()
+    loan_parameters_id = IntegerField()
 
     class Meta:
         database = db
@@ -47,12 +48,7 @@ class PaymentPeriodModel(Model):
     total_payment = FloatField()
     grace_period_type = CharField(default="NONE")
     payment_date = CharField()
-    payment_schedule = ForeignKeyField(
-        PaymentScheduleModel,
-        backref="payment_periods",
-        on_delete="CASCADE",
-        on_update="CASCADE"
-    )
+    payment_schedule_id = IntegerField()
 
     class Meta:
         database = db
@@ -65,12 +61,6 @@ class LoanFinancialIndicatorsModel(Model):
     van = FloatField()
     tir = FloatField()
     loan_parameters_id = IntegerField()
-    payment_schedule = ForeignKeyField(
-        PaymentScheduleModel,
-        backref="loan_financial_indicators",
-        on_delete="CASCADE",
-        on_update="CASCADE"
-    )
 
     class Meta:
         database = db

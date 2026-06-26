@@ -80,8 +80,6 @@ class LoanFinancialIndicatorsService:
             van: float,
             tir: float,
             loan_parameters_id: int,
-            payment_schedule_id: int,
-            user_id: int,
     ) -> LoanFinancialIndicators:
         """ Create a new LoanFinancialIndicators instance. """
 
@@ -106,8 +104,6 @@ class LoanFinancialIndicatorsService:
             van=van,
             tir=tir,
             loan_parameters_id=loan_parameters_id,
-            payment_schedule_id=payment_schedule_id,
-            user_id=user_id,
         )
 
 
@@ -185,6 +181,7 @@ class PaymentScheduleService:
     @staticmethod
     def create(
             payment_periods: list[PaymentPeriod],
+            loan_parameters_id: int,
     ) -> PaymentSchedule:
         """ Create a new PaymentSchedule instance. """
 
@@ -207,7 +204,11 @@ class PaymentScheduleService:
             total_mortgage_protection_insurance=total_mortgage_protection_insurance,
             total_vehicular_insurance=total_vehicular_insurance,
             total_payment=total_payment,
+            loan_parameters_id=loan_parameters_id,
         )
+
+        for period in payment_periods:
+            period.payment_schedule_id = payment_schedule.payment_schedule_id
 
         payment_schedule.payment_periods = payment_periods
 
