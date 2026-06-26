@@ -226,7 +226,7 @@ class FrenchMethodAlgorithm:
         """ Calculate the mortgage protection value based on the financed amount and mortgage protection factor. """
 
         # Calculate the mortgage protection value based on the financed amount and mortgage protection factor
-        if current_period == self.number_of_periods:
+        if current_period == 1:
             mortgage_protection_value = self.financed_amount * self.mortgage_protection_factor
         else:
             mortgage_protection_value = current_balance * self.mortgage_protection_factor
