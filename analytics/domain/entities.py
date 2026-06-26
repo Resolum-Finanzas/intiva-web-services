@@ -33,12 +33,11 @@ class LoanParameters:
             financed_amount: float,
             tea_percentage: float,
             balloon_payment_percentage: float,
-            grace_period_enabled: bool,
-            grace_period_type: str,
-            grace_period_in_months: int,
+            grace_period_type: str, # NONE, PARTIAL, TOTAL
             vehicle_id: int,
             user_id: int,
             loan_parameters_id: Optional[int] = None,
+            grace_period_in_months: int = 1,
             period_type: str = "MONTHLY",
     ):
         self.loan_parameters_id = loan_parameters_id
@@ -51,7 +50,6 @@ class LoanParameters:
         self.period_type = period_type
         self.tea_percentage = tea_percentage
         self.balloon_payment_percentage = balloon_payment_percentage
-        self.grace_period_enabled = grace_period_enabled
         self.grace_period_type = grace_period_type
         self.grace_period_in_months = grace_period_in_months
         self.vehicle_id = vehicle_id
@@ -106,7 +104,7 @@ class PaymentPeriod:
         vehicular_insurance (float): The amount of vehicular insurance paid during the payment period.
         total_payment (float): The total amount paid during the payment period, including interest, amortization, and insurance.
         balance_end (float): The balance at the end of the payment period.
-        is_grace_period (bool): A boolean indicating whether the payment period is a grace period.
+        grace_period_type (str): The type of grace period for the payment period (e.g., "NONE", "PARTIAL", "TOTAL").
         payment_date (str): The date of the payment for the period.
         payment_schedule_id (Optional[int]): An optional ID linking to a specific payment schedule.
     """
@@ -122,7 +120,7 @@ class PaymentPeriod:
             mortgage: float,
             vehicular_insurance: float,
             total_payment: float,
-            is_grace_period: bool,
+            grace_period_type: str,
             payment_period_id: Optional[int] = None
     ):
         self.period_number = period_number
@@ -133,7 +131,7 @@ class PaymentPeriod:
         self.vehicular_insurance = vehicular_insurance
         self.total_payment = total_payment
         self.balance_end = balance_end
-        self.is_grace_period = is_grace_period
+        self.grace_period_type = grace_period_type
         self.payment_date = date
         self.payment_schedule_id = payment_period_id
 
