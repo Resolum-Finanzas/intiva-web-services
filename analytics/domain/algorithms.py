@@ -39,6 +39,12 @@ class FrenchMethodAlgorithm:
             grace_period_in_months: float = 1.0, # Only used if grace_period_type is PARTIAL or TOTAL
             period_type: str = "MONTHLY",  # MONTHLY, QUARTERLY, SEMI-ANNUALLY, ANNUALLY
     ):
+        if grace_period_type not in ["NONE", "PARTIAL", "TOTAL"]:
+            raise ValueError("Invalid grace period type")
+
+        if grace_period_type in ["PARTIAL", "TOTAL"] and grace_period_in_months <= 0:
+            raise ValueError("Grace period duration must be greater than 0")
+
         # Variables that will be calculated with the configuration
         self.periods_in_days: int = 0
         self.mortgage_protection_factor: float = 0.0
@@ -202,15 +208,16 @@ class FrenchMethodAlgorithm:
     def calculate_constant_installment(self) -> None:
         """ Calculate the constant installment based on the financed amount, interest rate, and number of periods. """
 
-        # Assign the financed amount, interest rate, and number of periods to variables
-        financed_amount = self.financed_amount # P
+        factor = 1 + self.period_effective_rate
+        balloon_payment_to_present = self.balloon_payment_fee / pow(factor, self.total_number_of_years * 360 / self.periods_in_days)
+        payment_to_amortize = self.financed_amount - balloon_payment_to_present
+
         interest_rate = self.period_effective_rate # r
-        number_of_periods = self.number_of_periods # n
 
         # Calculate the constant installment
-        up = financed_amount * interest_rate
-        down = 1 - pow(1 + interest_rate, -number_of_periods)
-        constant_installment = up / down
+        up = interest_rate * pow(1 + interest_rate, self.total_number_of_years * 360 / self.periods_in_days)
+        down = pow(1 + interest_rate, self.total_number_of_years * 360 / self.periods_in_days) - 1
+        constant_installment = payment_to_amortize * (up / down)
 
         # Assign the constant installment to the instance variable
         self.constant_installment = constant_installment
@@ -231,7 +238,7 @@ class FrenchMethodAlgorithm:
 
         rate = self.period_effective_rate
 
-        if current_period == self.number_of_periods:
+        if current_period == 1:
             interest_for_period = self.financed_amount * rate
         else:
             interest_for_period = previous_period_current_balance * rate
