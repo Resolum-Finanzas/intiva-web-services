@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Optional
 
 
@@ -7,59 +6,51 @@ class LoanParameters:
     LoanParameters is a class that represents the parameters of a loan. It contains the following attributes:
 
     Attributes:
-        bank_entity (str): The name of the bank entity that provides the loan.
-        credit_term_in_months (int): The term of the loan in months.
-        initial_payment_amount (float): The amount of the initial payment for the loan.
-        credit_price (float): The price of the credit for the loan. It is the price of the vehicle.
-        financed_amount (float): The amount of the loan that is financed.
-        payment_frequency (str): The frequency of the payments for the loan. It can be "monthly", "biweekly", or "weekly".
-        tea_percentage (float): The annual effective rate (TEA) percentage for the loan.
-        balloon_payment_percentage (float): The percentage of the balloon payment for the loan. It is the percentage of the financed amount that will be paid at the end of the loan term.
-        vehicular_insurance_enabled (bool): A boolean that indicates if the vehicular insurance is enabled for the loan.
-        vehicular_insurance_amount (float): The amount of the vehicular insurance for the loan.
-        mortgage_protection_insurance_enabled (bool): A boolean that indicates if the mortgage protection insurance is enabled for the loan.
-        mortgage_protection_insurance_amount (float): The amount of the mortgage protection insurance for the loan.
-        grace_period_enabled (bool): A boolean that indicates if the grace period is enabled for the loan.
-        grace_period_type (str): The type of the grace period for the loan. It can be "total" or "partial".
-        grace_period_in_months (int): The number of months of the grace period for the loan.
-        vehicle_id (str): The ID of the vehicle that is being financed with the loan.
-        user_id (str): The ID of the user that is taking the loan.
+        bank_entity (str): The name of the bank entity that is providing the loan.
+        total_years (int): The total number of years for the loan.
+        vehicle_price (float): The price of the vehicle being financed.
+        vehicle_type (str): The type of vehicle being financed.
+        down_payment_percentage (float): The percentage of the vehicle price that is being paid as a down payment.
+        financed_amount (float): The amount of the loan that is being financed.
+        tea_percentage (float): The annual effective interest rate (TEA) percentage for the loan.
+        balloon_payment_percentage (float): The percentage of the financed amount that is being paid as a balloon payment.
+        grace_period_enabled (bool): A boolean indicating whether a grace period is enabled for the loan.
+        grace_period_type (str): The type of grace period for the loan (e.g., "NONE", "PARTIAL", "TOTAL").
+        grace_period_in_months (int): The number of months for the grace period.
+        vehicle_id (int): The ID of the vehicle being financed.
+        user_id (int): The ID of the user that is applying for the loan.
+        loan_parameters_id (Optional[int]): An optional ID for the loan parameters.
+        period_type (str): The type of payment period for the loan (e.g., "MONTHLY", "QUARTERLY", "ANNUAL").
     """
 
     def __init__(
             self,
             bank_entity: str,
-            credit_term_in_months: int,
-            initial_payment_amount: float,
-            credit_price: float,
+            total_years: int,
+            vehicle_price: float,
+            vehicle_type: str,
+            down_payment_percentage: float,
             financed_amount: float,
-            payment_frequency: str,
             tea_percentage: float,
             balloon_payment_percentage: float,
-            vehicular_insurance_enabled: bool,
-            vehicular_insurance_amount: float,
-            mortgage_protection_insurance_enabled: bool,
-            mortgage_protection_insurance_amount: float,
             grace_period_enabled: bool,
             grace_period_type: str,
             grace_period_in_months: int,
             vehicle_id: int,
             user_id: int,
-            loan_parameters_id: Optional[int] = None
+            loan_parameters_id: Optional[int] = None,
+            period_type: str = "MONTHLY",
     ):
         self.loan_parameters_id = loan_parameters_id
         self.bank_entity = bank_entity
-        self.credit_term_in_months = credit_term_in_months
-        self.initial_payment_amount = initial_payment_amount
-        self.credit_price = credit_price
+        self.total_years = total_years
+        self.vehicle_price = vehicle_price
+        self.vehicle_type = vehicle_type
+        self.down_payment_percentage = down_payment_percentage
         self.financed_amount = financed_amount
-        self.payment_frequency = payment_frequency
+        self.period_type = period_type
         self.tea_percentage = tea_percentage
         self.balloon_payment_percentage = balloon_payment_percentage
-        self.vehicular_insurance_enabled = vehicular_insurance_enabled
-        self.vehicular_insurance_amount = vehicular_insurance_amount
-        self.mortgage_protection_insurance_enabled = mortgage_protection_insurance_enabled
-        self.mortgage_protection_insurance_amount = mortgage_protection_insurance_amount
         self.grace_period_enabled = grace_period_enabled
         self.grace_period_type = grace_period_type
         self.grace_period_in_months = grace_period_in_months
@@ -67,28 +58,25 @@ class LoanParameters:
         self.user_id = user_id
 
 
-class LoanSimulation:
+class LoanFinancialIndicators:
     """
-    LoanSimulation is a class that represents the results of a loan simulation. It contains the following attributes:
+    LoanFinancialIndicators is a class that represents the financial indicators of a loan. It contains the following attributes:
 
     Attributes:
-        tcea_percentage (float): The annual effective cost rate (TCEA) percentage for the loan simulation.
-        ballon_payment_amount (float): The amount of the balloon payment for the loan simulation.
-        van (float): The net present value (VAN) of the loan simulation.
-        tir (float): The internal rate of return (TIR) of the loan simulation.
-        grace_interest (float): The amount of interest that is paid during the grace period for the loan simulation.
-        loan_parameters_id (str): The ID of the loan parameters that were used for the loan simulation.
-        payment_schedule_id (str): The ID of the payment schedule that was generated for the loan simulation.
-        user_id (str): The ID of the user that performed the loan simulation.
+        tcea_percentage (float): The annual effective cost rate (TCEA) percentage for the loan.
+        van (float): The net present value (VAN) of the loan.
+        tir (float): The internal rate of return (TIR) of the loan.
+        loan_parameters_id (int): The ID of the loan parameters associated with the financial indicators.
+        payment_schedule_id (int): The ID of the payment schedule that is associated with the financial indicators.
+        user_id (int): The ID of the user that is applying for the loan.
+        loan_simulation_id (Optional[int]): An optional ID for the loan simulation associated with the financial indicators.
     """
 
     def __init__(
             self,
             tcea_percentage: float,
-            ballon_payment_amount: float,
             van: float,
             tir: float,
-            grace_interest: float,
             loan_parameters_id: int,
             payment_schedule_id: int,
             user_id: int,
@@ -96,10 +84,8 @@ class LoanSimulation:
     ):
         self.loan_simulation_id = loan_simulation_id
         self.tcea_percentage = tcea_percentage
-        self.ballon_payment_amount = ballon_payment_amount
         self.van = van
         self.tir = tir
-        self.grace_interest = grace_interest
         self.loan_parameters_id = loan_parameters_id
         self.payment_schedule_id = payment_schedule_id
         self.user_id = user_id
@@ -162,7 +148,6 @@ class PaymentSchedule:
         total_mortgage_protection_insurance (float): The total amount of mortgage protection insurance paid on the loan.
         total_vehicular_insurance (float): The total amount of vehicular insurance paid on the loan.
         total_payment (float): The total amount paid on the loan, including interest, amortization, and insurance.
-        total_grace_interest (float): The total amount of interest paid during the grace period.
         payment_periods (list[PaymentPeriod]): A list of payment periods in the payment schedule.
     """
 
@@ -173,7 +158,6 @@ class PaymentSchedule:
             total_mortgage_protection_insurance: float,
             total_vehicular_insurance: float,
             total_payment: float,
-            total_grace_interest: float,
             payment_schedule_id: Optional[int] = None
     ):
         self.total_interest = total_interest
@@ -181,7 +165,6 @@ class PaymentSchedule:
         self.total_mortgage_protection_insurance = total_mortgage_protection_insurance
         self.total_vehicular_insurance = total_vehicular_insurance
         self.total_payment = total_payment
-        self.total_grace_interest = total_grace_interest
         self.payment_schedule_id = payment_schedule_id
         self.payment_periods = []
 
