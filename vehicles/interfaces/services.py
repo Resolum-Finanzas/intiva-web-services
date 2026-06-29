@@ -4,95 +4,100 @@ Exposes a Flask Blueprint (``vehicles_api``) that translates incoming HTTP
 requests into calls to the application service and maps the results back to
 JSON responses.  This layer owns no domain logic; it is responsible solely
 for I/O concerns: parsing request data and HTTP status code selection.
+
+Vehicles are seeded at application startup (see
+``vehicles.application.services.on_application_started``), so this layer
+exposes no creation endpoint — only read access and insurance assignment.
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, jsonify
 
-from vehicles.application.services import CarApplicationService, CreateCarCommand
+from vehicles.application.services import (
+    CarApplicationService,
+    AssignInsuranceCommand,
+)
+from vehicles.domain.enums import InsuranceType
 
 vehicles_api = Blueprint("vehicles_api", __name__)
 
 # Module-level singleton; safe because Flask handles one request at a time
 # within a single worker (no shared mutable state on this object).
-_service = CarApplicationService()
+car_service = CarApplicationService()
 
 
-@vehicles_api.route("/api/v1/vehicles/cars", methods=["GET"])
-def list_cars():
-    """Return the full car catalogue.
+@vehicles_api.route("/api/v1/vehicles", methods=["GET"])
+def list_vehicles():
+    """Return the full vehicle catalogue.
 
     **Responses:**
 
-    - ``200 OK`` — Body contains a JSON array of all persisted cars.  An
-      empty catalogue returns an empty array (not a 404).
+    - ``200 OK`` – Body contains a JSON array of all persisted vehicles.
 
     Returns:
-        tuple[flask.Response, int]: A JSON array of car objects paired with
-        ``200``.
+        tuple[flask.Response, int]: A JSON array of vehicle objects paired
+        with ``200``.
     """
-    cars = _service.list_cars()
-    return jsonify([
-        {
-            "id": c.id,
-            "make": c.make,
-            "model": c.model,
-            "year": c.year,
-            "price": c.price,
-            "photo_url": c.photo_url,
-        }
-        for c in cars
-    ]), 200
+    cars = car_service.list_cars()
+    return jsonify([car_service.car_to_dict(c) for c in cars]), 200
 
 
-@vehicles_api.route("/api/v1/vehicles/cars", methods=["POST"])
-def create_car():
-    """Create a new car listing.
-
-    Accepts a ``multipart/form-data`` request so that a cover photo can be
-    attached alongside the structured fields.
-
-    **Request body (multipart/form-data):**
-
-    - ``make`` *(str, required)*: Manufacturer name.
-    - ``model`` *(str, required)*: Model designation.
-    - ``year`` *(int, required)*: Production year.
-    - ``price`` *(float, required)*: Listed sale price.
-    - ``image`` *(file, optional)*: Cover photo for the listing.
+@vehicles_api.route("/api/v1/vehicles/<int:vehicle_id>", methods=["GET"])
+def get_vehicle(vehicle_id):
+    """Return a single vehicle by id.
 
     **Responses:**
 
-    - ``201 Created`` — Car saved successfully.  Body contains the persisted
-      record with its assigned ``id`` and resolved ``photo_url``.
-    - ``400 Bad Request`` — A required field is missing or a domain invariant
-      is violated (e.g. year out of range, negative price).
+    - ``200 OK`` – Vehicle found, body contains the vehicle object.
+    - ``404 Not Found`` – No vehicle exists with the given ``vehicle_id``.
 
     Returns:
-        tuple[flask.Response, int]: A JSON car object paired with the
+        tuple[flask.Response, int]: A JSON vehicle object paired with the
         appropriate HTTP status code.
     """
-    if not request.form.get("make") or not request.form.get("model") \
-            or not request.form.get("year") or not request.form.get("price"):
-        return jsonify({"error": "make, model, year and price are required"}), 400
+    car = car_service.get_car(vehicle_id)
+    if car is None:
+        return jsonify({"error": "Vehicle not found"}), 404
+    return jsonify(car_service.car_to_dict(car)), 200
 
-    image_data: bytes | None = None
-    if "image" in request.files:
-        image_data = request.files["image"].read()
 
+@vehicles_api.route("/api/v1/vehicles/<int:vehicle_id>/assign", methods=["POST"])
+def assign_insurance(vehicle_id):
+    """Assign an insurance type to an existing vehicle.
+
+    **Request body (JSON):**
+
+    .. code-block:: json
+
+        {
+            "insurance_type": "HIGH_RISK"
+        }
+
+    Valid ``insurance_type`` values: ``LOW_RISK_1``, ``LOW_RISK_2``,
+    ``MEDIUM_RISK``, ``HIGH_RISK``, ``PICK_UP``, ``CHINESE_AND_INDIAN``,
+    ``L8``, ``OTHERS``.
+
+    **Responses:**
+
+    - ``200 OK`` – Updated vehicle with ``vehicle_insurance`` populated.
+    - ``400 Bad Request`` – ``insurance_type`` missing or invalid.
+    - ``404 Not Found`` – No vehicle exists with the given ``vehicle_id``.
+
+    Returns:
+        tuple[flask.Response, int]: A JSON vehicle object paired with the
+        appropriate HTTP status code.
+    """
+    data = request.json
     try:
-        car = _service.create_car(CreateCarCommand(
-            make=request.form["make"],
-            model=request.form["model"],
-            year=int(request.form["year"]), 
-            price=float(request.form["price"]),
-            image_data=image_data,
-        ))
+        insurance_type = data["insurance_type"]
+        car = car_service.assign_insurance(
+            AssignInsuranceCommand(vehicle_id, insurance_type)
+        )
+        return jsonify(car_service.car_to_dict(car)), 200
+    except KeyError:
         return jsonify({
-            "id": car.id,
-            "make": car.make,
-            "model": car.model,
-            "year": car.year,
-            "price": car.price,
-            "photo_url": car.photo_url,
-        }), 201
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+            "error": "insurance_type is required",
+            "valid_options": [t.value for t in InsuranceType],
+        }), 400
+    except ValueError as e:
+        status = 404 if str(e) == "Car not found" else 400
+        return jsonify({"error": str(e)}), status
