@@ -89,12 +89,8 @@ class LoanFinancialIndicatorsService:
                 raise ValueError("TEA percentage must be between 0 and 1")
 
             van = float(van)
-            if van < 0:
-                raise ValueError("VAN must be greater than 0")
 
             tir = float(tir)
-            if tir < 0:
-                raise ValueError("TIR must be greater than 0")
 
         except (ValueError, TypeError) as e:
             raise ValueError("Invalid input data") from e

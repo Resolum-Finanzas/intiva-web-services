@@ -48,7 +48,7 @@ class VehicleSchema(Schema):
     fuel_type = fields.Str(allow_none=True, metadata={"example": "Gasoline"})
     transmission = fields.Str(allow_none=True, metadata={"example": "Automatic"})
     mileage = fields.Int(allow_none=True, metadata={"example": 0})
-    interest_rate = fields.Float(allow_none=True, metadata={"example": 0.132})
+    interest_rate = fields.Str(allow_none=True, metadata={"example": "6.11%"})
     drivetrain = fields.Str(allow_none=True, metadata={"example": "FWD"})
     color_aesthetics = fields.Str(allow_none=True, metadata={"example": "White"})
     specs = fields.Nested(VehicleSpecsSchema)
