@@ -1,113 +1,28 @@
-"""Application services for the Vehicles bounded context.
-
-Orchestrates use-cases by coordinating domain services, infrastructure
-adapters, and repositories.  Contains no domain logic of its own.
-
-``on_application_started`` is the startup event handler registered in
-``app.py``.  It is responsible for populating the initial car catalogue the
-first time the application boots, uploading seed photos to Cloudinary and
-persisting the resulting entities — all coordinated from the application layer
-so that infrastructure components never drive their own lifecycle.
-"""
+from __future__ import annotations
 
 import re
 import urllib.request
 
-from cloudinary_storage.service import CloudinaryCarPhotoService
 from vehicles.domain.entities import Car
+from vehicles.domain.enums import InsuranceType
 from vehicles.domain.services import CarService
 from vehicles.infrastructure.repositories import CarRepository
-
-
-_SEED_CARS: list[tuple[str, str, int, float, str]] = [
-    (
-        "Toyota", "Corolla", 2024, 22_000.00,
-        "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb"
-        "?w=640&q=80&auto=format&fit=crop",
-    ),
-    (
-        "Honda", "Civic", 2023, 24_500.00,
-        "https://images.unsplash.com/photo-1606016159991-dfe4f2746ad5"
-        "?w=640&q=80&auto=format&fit=crop",
-    ),
-    (
-        "Ford", "Mustang", 2024, 32_000.00,
-        "https://images.unsplash.com/photo-1584345604476-8ec5e12e42dd"
-        "?w=640&q=80&auto=format&fit=crop",
-    ),
-]
+from vehicles.infrastructure.seed.loader import load_car_fixtures
+from vehicles.infrastructure.storage.cloudinary_storage.service import CloudinaryCarPhotoService
 
 
 def _slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
-class CreateCarCommand:
-    """Value object that carries the raw input for the *create car* use-case.
-
-    Grouping the parameters into a command object decouples the interface
-    layer from the application service signature, making it easier to extend
-    the command (e.g. adding optional fields) without changing call sites.
-
-    Attributes:
-        make (str): Manufacturer name.
-        model (str): Model designation.
-        year (int): Production year.
-        price (float): Listed sale price.
-        image_data (bytes | None): Raw image bytes from a multipart upload.
-            ``None`` when no photo is attached to the request.
-    """
-
-    def __init__(
-        self,
-        make: str,
-        model: str,
-        year: int,
-        price: float,
-        image_data: bytes | None = None,
-    ) -> None:
-        """Initialise a CreateCarCommand.
-
-        Args:
-            make (str): Manufacturer name.
-            model (str): Model designation.
-            year (int): Production year.
-            price (float): Listed sale price.
-            image_data (bytes | None): Raw image bytes from a multipart
-                upload.  Defaults to ``None`` when no photo is provided.
-        """
-        self.make = make
-        self.model = model
-        self.year = year
-        self.price = price
-        self.image_data = image_data
-
-
 def on_application_started() -> None:
-    """Handle the *application started* event for the Vehicles bounded context.
+    """Seed the car catalogue on first boot (idempotent).
 
-    Populates the ``cars`` table on first boot.  The operation is idempotent:
-    if any car already exists in the database the function returns immediately
-    without touching Cloudinary or the repository.
-
-    Sequence for each seed entry:
-
-    1. **Check** — skip entirely if the table is already populated.
-    2. **Download** — fetch the public photo URL into memory (no temp files).
-    3. **Upload** — push the bytes to Cloudinary via
-       :class:`~vehicles.infrastructure.cloudinary_service.CloudinaryCarPhotoService`
-       and obtain the managed ``secure_url``.
-    4. **Create** — delegate to
-       :class:`~vehicles.domain.services.CarService` to validate invariants
-       and build a transient entity.
-    5. **Persist** — save via
-       :class:`~vehicles.infrastructure.repositories.CarRepository`.
-
-    Any exception during seeding is caught and logged so that a Cloudinary
-    outage or missing network during local development does not prevent the
-    application from starting.
+    Downloads each fixture photo, uploads it to Cloudinary, builds a
+    validated domain entity via the domain service, and persists it.
+    The operation is a no-op if any car already exists in the database.
     """
-    from vehicles.infrastructure.models import CarModel  # local import avoids circular deps
+    from vehicles.infrastructure.models import CarModel
 
     if CarModel.select().count() > 0:
         print("[Vehicles] Catalogue already populated — skipping seed.")
@@ -115,29 +30,58 @@ def on_application_started() -> None:
 
     print("[Vehicles] Seeding initial car catalogue …")
     repository = CarRepository()
+    fixtures = load_car_fixtures()
 
-    for make, model, year, price, photo_url in _SEED_CARS:
+    for data in fixtures:
         try:
             req = urllib.request.Request(
-                photo_url,
-                headers={"User-Agent": "IntivaCarsSeeder/1.0 (university project)"}
+                data["image_url"],
+                headers={"User-Agent": "VeyraCarsSeeder/1.0"}
             )
             with urllib.request.urlopen(req) as response:
-                image_data: bytes = response.read()
+                image_bytes: bytes = response.read()
 
-            managed_url = CloudinaryCarPhotoService.upload(
-                image_data, _slugify(f"{make}-{model}-{year}")
+            slug = _slugify(f"{data['make']}-{data['model']}-{data['year']}")
+            managed_url = CloudinaryCarPhotoService.upload(image_bytes, slug)
+
+            car = CarService.create_car(
+                make=data["make"],
+                model=data["model"],
+                year=data["year"],
+                price=data["price"],
+                version=data.get("version"),
+                vehicle_type=data.get("vehicle_type"),
+                risk_category=data.get("risk_category"),
+                reference_price=data.get("reference_price"),
+                residual_value=data.get("residual_value"),
+                condition=data.get("condition"),
+                fuel_type=data.get("fuel_type"),
+                transmission=data.get("transmission"),
+                mileage=data.get("mileage"),
+                interest_rate=data.get("interest_rate"),
+                drivetrain=data.get("drivetrain"),
+                color_aesthetics=data.get("color_aesthetics"),
+                engine_power=data.get("engine_power"),
+                combined_consumption=data.get("combined_consumption"),
+                safety=data.get("safety"),
+                comfort=data.get("comfort"),
+                photo_url=managed_url,
             )
-
-            car = CarService.create_car(make, model, year, price, managed_url)
-
             repository.save(car)
-            print(f"[Vehicles]   ✓ {year} {make} {model}")
+            print(f"[Vehicles]   ✓ {data['year']} {data['make']} {data['model']}")
 
-        except Exception as exc:  # noqa: BLE001
-            print(f"[Vehicles]   ✗ {year} {make} {model} — {exc}")
+        except Exception as exc:
+            print(f"[Vehicles]   ✗ {data['year']} {data['make']} {data['model']} — {exc}")
 
     print("[Vehicles] Seeding complete.")
+
+
+class AssignInsuranceCommand:
+    """Value object for the assign-insurance use-case."""
+
+    def __init__(self, car_id: int, insurance_type: str) -> None:
+        self.car_id = car_id
+        self.insurance_type = insurance_type
 
 
 class CarApplicationService:
@@ -145,60 +89,92 @@ class CarApplicationService:
 
     Responsibilities:
 
-    1. **Photo upload** — delegates to
-       :class:`~vehicles.infrastructure.storage.cloudinary_storage.service.CloudinaryCarPhotoService`
-       to persist the raw bytes and obtain a managed URL before entity
-       creation.
-    2. **Domain logic** — delegates to
-       :class:`~vehicles.domain.services.CarService` to validate invariants
-       and construct a transient :class:`~vehicles.domain.entities.Car` entity.
-    3. **Persistence** — delegates to
-       :class:`~vehicles.infrastructure.repositories.CarRepository` to save
-       the entity and return the persisted aggregate with its assigned
-       identity.
+    1. Read access – delegates to
+       :class:`~vehicles.infrastructure.repositories.CarRepository` to
+       retrieve persisted entities.
+    2. Insurance assignment – validates the raw insurance type string
+       against the domain enum and delegates persistence to the repository.
     """
 
-    def __init__(self) -> None:
-        """Initialise the service with its required collaborators."""
-        self._repository = CarRepository()
-        self._car_service = CarService()
-
-    def create_car(self, command: CreateCarCommand) -> Car:
-        """Execute the *create car* use-case.
-
-        Uploads the photo to Cloudinary (when provided) before delegating
-        entity creation to the domain service, so the entity is always
-        constructed with a resolved ``photo_url``.
-
-        Args:
-            command (CreateCarCommand): Value object carrying the raw input
-                for this use-case.
-
-        Returns:
-            Car: The persisted :class:`~vehicles.domain.entities.Car` entity
-            with its assigned ``id``.
-
-        Raises:
-            ValueError: If domain invariants are violated (invalid make,
-                model, year, or price).
-            cloudinary_storage.exceptions.Error: If the photo upload fails.
-        """
-        photo_url: str | None = None
-
-        if command.image_data:
-            public_id = _slugify(f"{command.make}-{command.model}-{command.year}")
-            photo_url = CloudinaryCarPhotoService.upload(command.image_data, public_id)
-
-        car = self._car_service.create_car(
-            command.make, command.model, command.year, command.price, photo_url
-        )
-        return self._repository.save(car)
+    def __init__(self):
+        """Initialize the service with its required collaborators."""
+        self.car_repository = CarRepository()
 
     def list_cars(self) -> list[Car]:
-        """Return all cars in the catalogue as domain entities.
+        """Return all cars in the catalogue as domain entities."""
+        return self.car_repository.find_all()
+
+    def get_car(self, car_id: int) -> Car | None:
+        """Return a single car by id, or None if not found."""
+        return self.car_repository.find_by_id(car_id)
+
+    def assign_insurance(self, command: AssignInsuranceCommand) -> Car:
+        """Execute the *assign insurance* use-case.
+
+        Args:
+            command (AssignInsuranceCommand): Value object carrying the
+                target car id and the raw insurance type string.
 
         Returns:
-            list[Car]: Every persisted :class:`~vehicles.domain.entities.Car`
-            instance, in insertion order.
+            Car: The updated :class:`~vehicles.domain.entities.Car` entity.
+
+        Raises:
+            ValueError: If ``insurance_type`` is not a valid
+                :class:`~vehicles.domain.enums.InsuranceType` value, or if
+                no car matches ``car_id``.
         """
-        return self._repository.find_all()
+        try:
+            insurance = InsuranceType(command.insurance_type)
+        except ValueError:
+            valid = [t.value for t in InsuranceType]
+            raise ValueError(f"Invalid insurance_type. Valid options: {valid}")
+
+        car = self.car_repository.update_insurance(command.car_id, insurance)
+        if car is None:
+            raise ValueError("Car not found")
+        return car
+
+    @staticmethod
+    def car_to_dict(car: Car) -> dict:
+        """Serialize a Car entity to a JSON-serializable dict.
+
+        Args:
+            car (Car): The entity to serialize.
+
+        Returns:
+            dict: A plain dict ready to be passed to ``flask.jsonify``.
+        """
+        return {
+            "id": car.id,
+            "make": car.make,
+            "model": car.model,
+            "year": car.year,
+            "price": car.price,
+            "version": car.version,
+            "vehicle_type": car.vehicle_type,
+            "risk_category": car.risk_category,
+            "reference_price": car.reference_price,
+            "residual_value": car.residual_value,
+            "condition": car.condition,
+            "fuel_type": car.fuel_type,
+            "transmission": car.transmission,
+            "mileage": car.mileage,
+            "interest_rate": car.interest_rate,
+            "drivetrain": car.drivetrain,
+            "color_aesthetics": car.color_aesthetics,
+            "specs": {
+                "engine_power": car.engine_power,
+                "combined_consumption": car.combined_consumption,
+                "safety": car.safety,
+                "comfort": car.comfort,
+            },
+            "photo_url": car.photo_url,
+            "vehicle_insurance": (
+                {
+                    "type": car.vehicle_insurance.value,
+                    "display_name": car.vehicle_insurance.display_name,
+                    "annual_rate": car.vehicle_insurance.annual_rate,
+                }
+                if car.vehicle_insurance else None
+            ),
+        }

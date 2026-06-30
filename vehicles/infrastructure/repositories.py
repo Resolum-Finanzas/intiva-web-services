@@ -1,5 +1,3 @@
-"""Repository implementation for the Vehicles bounded context."""
-
 from __future__ import annotations
 
 from peewee import DoesNotExist
@@ -91,7 +89,12 @@ class CarRepository:
     def update_insurance(car_id: int, insurance: InsuranceType) -> Car | None:
         """Assign an insurance type to an existing car.
 
-        Returns the updated entity, or None if the car does not exist.
+        Args:
+            car_id (int): Primary key of the target car.
+            insurance (InsuranceType): The insurance type to assign.
+
+        Returns:
+            Car | None: The updated entity, or None if the car does not exist.
         """
         try:
             record = CarModel.get_by_id(car_id)
@@ -99,5 +102,5 @@ class CarRepository:
             return None
 
         record.vehicle_insurance = insurance.value
-        record.save()
+        record.save(only=[CarModel.vehicle_insurance])
         return _to_entity(record)

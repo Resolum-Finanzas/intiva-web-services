@@ -5,8 +5,8 @@ requests into calls to the application service and maps the results back to
 JSON responses.  This layer owns no domain logic; it is responsible solely
 for I/O concerns: parsing request data and HTTP status code selection.
 
-Vehicles are seeded at application startup (see
-``vehicles.application.services.on_application_started``), so this layer
+Vehicles are seeded at application startup via
+``vehicles.application.services.on_application_started``, so this layer
 exposes no creation endpoint — only read access and insurance assignment.
 """
 
@@ -86,7 +86,7 @@ def assign_insurance(vehicle_id):
         tuple[flask.Response, int]: A JSON vehicle object paired with the
         appropriate HTTP status code.
     """
-    data = request.json
+    data = request.get_json(silent=True) or {}  
     try:
         insurance_type = data["insurance_type"]
         car = car_service.assign_insurance(

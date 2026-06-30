@@ -1,21 +1,12 @@
-"""Domain services for the Vehicles bounded context.
+"""Domain services for the Vehicles bounded context."""
 
-Encapsulates the business invariants that must hold before a ``Car`` entity
-can be created or updated.  No infrastructure dependency lives here.
-"""
+from __future__ import annotations
 
 from vehicles.domain.entities import Car
 
 
 class CarService:
-    """Domain service responsible for constructing valid ``Car`` entities.
-
-    Enforces the following invariants:
-
-    - ``make`` and ``model`` must be non-empty strings.
-    - ``year`` must be a four-digit integer in the range [1886, 2100].
-    - ``price`` must be a positive number.
-    """
+    """Domain service responsible for constructing valid Car entities."""
 
     @staticmethod
     def create_car(
@@ -23,24 +14,25 @@ class CarService:
         model: str,
         year: int,
         price: float,
+        version: str | None = None,
+        vehicle_type: str | None = None,
+        risk_category: str | None = None,
+        reference_price: float | None = None,
+        residual_value: float | None = None,
+        condition: str | None = None,
+        fuel_type: str | None = None,
+        transmission: str | None = None,
+        mileage: int | None = None,
+        interest_rate: str | None = None,
+        drivetrain: str | None = None,
+        color_aesthetics: str | None = None,
+        engine_power: str | None = None,
+        combined_consumption: str | None = None,
+        safety: str | None = None,
+        comfort: str | None = None,
         photo_url: str | None = None,
     ) -> Car:
-        """Validate raw input and produce a transient :class:`Car` entity.
-
-        Args:
-            make (str): Manufacturer name.
-            model (str): Model designation.
-            year (int): Production year.
-            price (float): Sale price (must be > 0).
-            photo_url (str | None): Optional Cloudinary URL already resolved
-                by the application layer before calling this service.
-
-        Returns:
-            Car: A new, unsaved :class:`Car` domain entity.
-
-        Raises:
-            ValueError: If any invariant is violated.
-        """
+        """Validate raw input and produce a transient Car entity."""
         if not make or not isinstance(make, str):
             raise ValueError("'make' must be a non-empty string.")
         if not model or not isinstance(model, str):
@@ -58,4 +50,27 @@ class CarService:
         except (ValueError, TypeError):
             raise ValueError("'price' must be a positive number.")
 
-        return Car(make, model, year, price, photo_url)
+        return Car(
+            make=make,
+            model=model,
+            year=year,
+            price=price,
+            version=version,
+            vehicle_type=vehicle_type,
+            risk_category=risk_category,
+            reference_price=float(reference_price) if reference_price is not None else None,
+            residual_value=float(residual_value) if residual_value is not None else None,
+            condition=condition,
+            fuel_type=fuel_type,
+            transmission=transmission,
+            mileage=int(mileage) if mileage is not None else None,
+            interest_rate=interest_rate,
+            drivetrain=drivetrain,
+            color_aesthetics=color_aesthetics,
+            engine_power=engine_power,
+            combined_consumption=combined_consumption,
+            safety=safety,
+            comfort=comfort,
+            photo_url=photo_url,
+            vehicle_insurance=None,
+        )
