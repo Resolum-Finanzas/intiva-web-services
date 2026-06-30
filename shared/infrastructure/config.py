@@ -18,6 +18,6 @@ class AppConfig:
     MYSQL_DB_NAME: str = os.getenv("MYSQL_DB_NAME")
     MYSQL_DB_HOST: str = os.getenv("MYSQL_DB_HOST")
 
-    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY")
-    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM")
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "development_secret_key")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
