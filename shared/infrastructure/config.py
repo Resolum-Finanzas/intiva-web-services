@@ -12,11 +12,11 @@ class AppConfig:
     Values are retrieved from the .env file.
     """
 
-    MYSQL_DB_USER: str = os.getenv("MYSQL_DB_USER")
-    MYSQL_DB_PASSWORD: str = os.getenv("MYSQL_DB_PASSWORD")
-    MYSQL_DB_PORT: str = os.getenv("MYSQL_DB_PORT")
-    MYSQL_DB_NAME: str = os.getenv("MYSQL_DB_NAME")
-    MYSQL_DB_HOST: str = os.getenv("MYSQL_DB_HOST")
+    POSTGRES_DB_USER: str = os.getenv("POSTGRES_DB_USER")
+    POSTGRES_DB_PASSWORD: str = os.getenv("POSTGRES_DB_PASSWORD")
+    POSTGRES_DB_PORT: str = os.getenv("POSTGRES_DB_PORT")
+    POSTGRES_DB_NAME: str = os.getenv("POSTGRES_DB_NAME")
+    POSTGRES_DB_HOST: str = os.getenv("POSTGRES_DB_HOST")
 
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "development_secret_key")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
