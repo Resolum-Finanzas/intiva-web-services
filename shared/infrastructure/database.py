@@ -1,16 +1,16 @@
-from peewee import MySQLDatabase
+from peewee import PostgresqlDatabase
 
 from shared.infrastructure.config import AppConfig
 
-if not AppConfig.MYSQL_DB_NAME:
-    raise RuntimeError("MYSQL_DB_NAME is not set in the environment")
+if not AppConfig.POSTGRES_DB_NAME:
+    raise RuntimeError("POSTGRES_DB_NAME is not set in the environment")
 
-db = MySQLDatabase(
-    AppConfig.MYSQL_DB_NAME,
-    user=AppConfig.MYSQL_DB_USER,
-    password=AppConfig.MYSQL_DB_PASSWORD,
-    host=AppConfig.MYSQL_DB_HOST,
-    port=int(AppConfig.MYSQL_DB_PORT),
+db = PostgresqlDatabase(
+    AppConfig.POSTGRES_DB_NAME,
+    user=AppConfig.POSTGRES_DB_USER,
+    password=AppConfig.POSTGRES_DB_PASSWORD,
+    host=AppConfig.POSTGRES_DB_HOST,
+    port=int(AppConfig.POSTGRES_DB_PORT),
 )
 
 
