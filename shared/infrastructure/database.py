@@ -21,6 +21,7 @@ def init_db():
     """
     from iam.infrastructure.models import UserModel
     from analytics.infrastructure.models import LoanParametersModel, LoanFinancialIndicatorsModel, PaymentScheduleModel, PaymentPeriodModel
+    from vehicles.infrastructure.models import CarModel
 
     should_close = db.is_closed()
     if should_close:
@@ -32,6 +33,7 @@ def init_db():
         LoanFinancialIndicatorsModel,
         PaymentScheduleModel,
         PaymentPeriodModel,
+        CarModel,
     ], safe=True)
 
     if should_close and not db.is_closed():
