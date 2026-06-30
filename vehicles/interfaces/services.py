@@ -1,32 +1,81 @@
-"""Interface (REST API) layer for the Vehicles bounded context.
+"""REST API layer for the Vehicles bounded context."""
 
-Exposes a Flask Blueprint (``vehicles_api``) that translates incoming HTTP
-requests into calls to the application service and maps the results back to
-JSON responses.  This layer owns no domain logic; it is responsible solely
-for I/O concerns: parsing request data and HTTP status code selection.
-
-Vehicles are seeded at application startup via
-``vehicles.application.services.on_application_started``, so this layer
-exposes no creation endpoint — only read access and insurance assignment.
-"""
-
-from flask import Blueprint, request, jsonify
+from flask.views import MethodView
+from flask_smorest import Blueprint
+from marshmallow import Schema, fields
 
 from vehicles.application.services import (
-    CarApplicationService,
     AssignInsuranceCommand,
+    CarApplicationService,
 )
 from vehicles.domain.enums import InsuranceType
 
-vehicles_api = Blueprint("vehicles_api", __name__)
+vehicles_api = Blueprint(
+    "vehicles",
+    __name__,
+    url_prefix="/api/v1/vehicles",
+    description="Vehicle catalogue operations",
+)
 
-# Module-level singleton; safe because Flask handles one request at a time
-# within a single worker (no shared mutable state on this object).
 car_service = CarApplicationService()
 
 
-@vehicles_api.route("/api/v1/vehicles", methods=["GET"])
-def list_vehicles():
+class VehicleInsuranceSchema(Schema):
+    type = fields.Str(metadata={"example": "HIGH_RISK"})
+    display_name = fields.Str(metadata={"example": "High risk"})
+    annual_rate = fields.Float(metadata={"example": 0.0611})
+
+
+class VehicleSpecsSchema(Schema):
+    engine_power = fields.Str(allow_none=True, metadata={"example": "120 hp"})
+    combined_consumption = fields.Str(allow_none=True, metadata={"example": "6.5 L/100km"})
+    safety = fields.Str(allow_none=True, metadata={"example": "ABS, airbags"})
+    comfort = fields.Str(allow_none=True, metadata={"example": "Air conditioning"})
+
+
+class VehicleSchema(Schema):
+    id = fields.Int(metadata={"example": 1})
+    make = fields.Str(metadata={"example": "Toyota"})
+    model = fields.Str(metadata={"example": "Corolla"})
+    year = fields.Int(metadata={"example": 2023})
+    price = fields.Float(metadata={"example": 28500})
+    version = fields.Str(allow_none=True, metadata={"example": "XEi"})
+    vehicle_type = fields.Str(allow_none=True, metadata={"example": "SEDAN"})
+    risk_category = fields.Str(allow_none=True, metadata={"example": "MEDIUM_RISK"})
+    reference_price = fields.Float(allow_none=True, metadata={"example": 28500})
+    residual_value = fields.Float(allow_none=True, metadata={"example": 9975})
+    condition = fields.Str(allow_none=True, metadata={"example": "NEW"})
+    fuel_type = fields.Str(allow_none=True, metadata={"example": "Gasoline"})
+    transmission = fields.Str(allow_none=True, metadata={"example": "Automatic"})
+    mileage = fields.Int(allow_none=True, metadata={"example": 0})
+    interest_rate = fields.Float(allow_none=True, metadata={"example": 0.132})
+    drivetrain = fields.Str(allow_none=True, metadata={"example": "FWD"})
+    color_aesthetics = fields.Str(allow_none=True, metadata={"example": "White"})
+    specs = fields.Nested(VehicleSpecsSchema)
+    photo_url = fields.Url(allow_none=True)
+    vehicle_insurance = fields.Nested(VehicleInsuranceSchema, allow_none=True)
+
+
+class AssignInsuranceRequestSchema(Schema):
+    insurance_type = fields.Str(
+        required=True,
+        metadata={
+            "example": "HIGH_RISK",
+            "enum": [insurance_type.value for insurance_type in InsuranceType],
+        },
+    )
+
+
+class VehicleErrorResponseSchema(Schema):
+    error = fields.Str(metadata={"example": "Vehicle not found"})
+
+
+class AssignInsuranceErrorResponseSchema(VehicleErrorResponseSchema):
+    valid_options = fields.List(fields.Str())
+
+
+@vehicles_api.route("")
+class VehicleListResource(MethodView):
     """Return the full vehicle catalogue.
 
     **Responses:**
@@ -37,12 +86,19 @@ def list_vehicles():
         tuple[flask.Response, int]: A JSON array of vehicle objects paired
         with ``200``.
     """
-    cars = car_service.list_cars()
-    return jsonify([car_service.car_to_dict(c) for c in cars]), 200
+    @vehicles_api.doc(
+        summary="List vehicles",
+        description="Returns the full vehicle catalogue.",
+        security=[{"bearerAuth": []}],
+    )
+    @vehicles_api.response(200, VehicleSchema(many=True))
+    def get(self):
+        cars = car_service.list_cars()
+        return [car_service.car_to_dict(car) for car in cars]
 
 
-@vehicles_api.route("/api/v1/vehicles/<int:vehicle_id>", methods=["GET"])
-def get_vehicle(vehicle_id):
+@vehicles_api.route("/<int:vehicle_id>")
+class VehicleResource(MethodView):
     """Return a single vehicle by id.
 
     **Responses:**
@@ -54,14 +110,22 @@ def get_vehicle(vehicle_id):
         tuple[flask.Response, int]: A JSON vehicle object paired with the
         appropriate HTTP status code.
     """
-    car = car_service.get_car(vehicle_id)
-    if car is None:
-        return jsonify({"error": "Vehicle not found"}), 404
-    return jsonify(car_service.car_to_dict(car)), 200
+    @vehicles_api.doc(
+        summary="Get vehicle by id",
+        description="Returns a single vehicle from the catalogue.",
+        security=[{"bearerAuth": []}],
+    )
+    @vehicles_api.response(200, VehicleSchema)
+    @vehicles_api.alt_response(404, schema=VehicleErrorResponseSchema, description="Vehicle not found")
+    def get(self, vehicle_id):
+        car = car_service.get_car(vehicle_id)
+        if car is None:
+            return {"error": "Vehicle not found"}, 404
+        return car_service.car_to_dict(car)
 
 
-@vehicles_api.route("/api/v1/vehicles/<int:vehicle_id>/assign", methods=["POST"])
-def assign_insurance(vehicle_id):
+@vehicles_api.route("/<int:vehicle_id>/assign")
+class AssignInsuranceResource(MethodView):
     """Assign an insurance type to an existing vehicle.
 
     **Request body (JSON):**
@@ -86,18 +150,30 @@ def assign_insurance(vehicle_id):
         tuple[flask.Response, int]: A JSON vehicle object paired with the
         appropriate HTTP status code.
     """
-    data = request.get_json(silent=True) or {}  
-    try:
-        insurance_type = data["insurance_type"]
-        car = car_service.assign_insurance(
-            AssignInsuranceCommand(vehicle_id, insurance_type)
-        )
-        return jsonify(car_service.car_to_dict(car)), 200
-    except KeyError:
-        return jsonify({
-            "error": "insurance_type is required",
-            "valid_options": [t.value for t in InsuranceType],
-        }), 400
-    except ValueError as e:
-        status = 404 if str(e) == "Car not found" else 400
-        return jsonify({"error": str(e)}), status
+    @vehicles_api.doc(
+        summary="Assign insurance",
+        description="Assigns an insurance type to an existing vehicle.",
+        security=[{"bearerAuth": []}],
+    )
+    @vehicles_api.arguments(AssignInsuranceRequestSchema)
+    @vehicles_api.response(200, VehicleSchema)
+    @vehicles_api.alt_response(
+        400,
+        schema=AssignInsuranceErrorResponseSchema,
+        description="Missing or invalid insurance type",
+    )
+    @vehicles_api.alt_response(404, schema=VehicleErrorResponseSchema, description="Vehicle not found")
+    def post(self, data, vehicle_id):
+        try:
+            car = car_service.assign_insurance(
+                AssignInsuranceCommand(vehicle_id, data["insurance_type"])
+            )
+            return car_service.car_to_dict(car)
+        except ValueError as exc:
+            if str(exc) == "Car not found":
+                return {"error": str(exc)}, 404
+
+            return {
+                "error": str(exc),
+                "valid_options": [insurance_type.value for insurance_type in InsuranceType],
+            }, 400
