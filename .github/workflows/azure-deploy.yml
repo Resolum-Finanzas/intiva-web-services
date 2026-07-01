@@ -1,6 +1,7 @@
 name: Deploy Intiva API to Azure
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
