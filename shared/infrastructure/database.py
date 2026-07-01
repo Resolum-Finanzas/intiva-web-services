@@ -11,6 +11,7 @@ db = PostgresqlDatabase(
     password=AppConfig.POSTGRES_DB_PASSWORD,
     host=AppConfig.POSTGRES_DB_HOST,
     port=int(AppConfig.POSTGRES_DB_PORT),
+    sslmode=AppConfig.POSTGRES_SSL_MODE,
 )
 
 
