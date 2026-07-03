@@ -15,3 +15,13 @@ class MortgageInsuranceConstants:
     """ Constants for mortgage insurance rates. """
 
     DEFAULT_VALUE = 0.00077
+
+
+class DiscountRateConstants:
+    """ COK (Costo de Oportunidad del Capital) used to discount loan cashflows for the VAN.
+
+    Distinct from the loan's own TEA: estimated from a risk-free rate plus a country
+    risk premium, per the BCP "Compra Inteligente" reference model.
+    """
+
+    COK_ANNUAL = 0.1325
