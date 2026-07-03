@@ -41,3 +41,14 @@ class InsuranceType(str, Enum):
             "OTHERS":            "Otros",
         }
         return _labels[self.value]
+
+    @classmethod
+    def from_risk_category(cls, risk_category: str) -> "InsuranceType":
+        """Map a car's Spanish risk_category label (seed data) to its InsuranceType.
+
+        Falls back to OTHERS when the label doesn't match any known category.
+        """
+        for insurance_type in cls:
+            if insurance_type.display_name == risk_category:
+                return insurance_type
+        return cls.OTHERS
