@@ -118,6 +118,7 @@ class PaymentPeriodService:
             total_payment: float,
             net_flow: float,
             grace_period_type: str,
+            french_installment: float = 0.0,
     ) -> PaymentPeriod:
         """ Create a new PaymentPeriod instance. """
 
@@ -141,6 +142,8 @@ class PaymentPeriodService:
             amortization = float(amortization)
             if amortization < 0:
                 raise ValueError("Amortization must be greater than 0")
+
+            french_installment = float(french_installment)
 
             mortgage = float(mortgage)
             if mortgage < 0:
@@ -168,6 +171,7 @@ class PaymentPeriodService:
             balance_end=balance_end,
             interest=interest,
             amortization=amortization,
+            french_installment=french_installment,
             mortgage=mortgage,
             vehicular_insurance=vehicular_insurance,
             balloon_fee=balloon_fee,

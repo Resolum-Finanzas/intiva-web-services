@@ -26,6 +26,7 @@ def serialize_payment_period(period) -> dict:
         "balance_end": period.balance_end,
         "interest": period.interest,
         "amortization": period.amortization,
+        "french_installment": period.french_installment,
         "mortgage": period.mortgage,
         "vehicular_insurance": period.vehicular_insurance,
         "balloon_fee": period.balloon_fee,
@@ -52,12 +53,15 @@ def serialize_payment_schedule(schedule) -> dict:
     }
 
 
+class LoanSimulationErrorResponseSchema(Schema):
+    error = fields.Str(metadata={"example": "Vehicle not found"})
+
+
 class LoanSimulationRequestSchema(Schema):
     user_id = fields.Int(required=True)
     vehicle_id = fields.Int(required=True)
     bank_entity = fields.Str(required=True)
     vehicle_cost = fields.Float(required=True)
-    vehicle_type = fields.Str(required=True)
     down_payment_percentage = fields.Float(required=True)
     balloon_payment_percentage = fields.Float(required=True)
     tea = fields.Float(required=True)
@@ -78,13 +82,13 @@ class LoanSimulationResource(MethodView):
     )
     @analytics_api.arguments(LoanSimulationRequestSchema)
     @analytics_api.response(201)
+    @analytics_api.alt_response(404, schema=LoanSimulationErrorResponseSchema, description="Vehicle not found")
     def post(self, data):
         command = PerformFrenchAlgorithmCommand(
             user_id=data["user_id"],
             vehicle_id=data["vehicle_id"],
             bank_entity=data["bank_entity"],
             vehicle_cost=data["vehicle_cost"],
-            vehicle_type=data["vehicle_type"],
             down_payment_percentage=data["down_payment_percentage"],
             balloon_payment_percentage=data["balloon_payment_percentage"],
             tea=data["tea"],
@@ -95,7 +99,10 @@ class LoanSimulationResource(MethodView):
             period_type=data.get("period_type", "MONTHLY"),
         )
 
-        result = load_simulator_service.perform_french_algorithm(command)
+        try:
+            result = load_simulator_service.perform_french_algorithm(command)
+        except ValueError as exc:
+            return {"error": str(exc)}, 404
 
         return {
             "loan_parameters": result["loan_parameters"].__dict__,

@@ -4,6 +4,8 @@ from analytics.domain.services import LoanParameterService, LoanFinancialIndicat
     PaymentPeriodService
 from analytics.infrastructure.repositories import LoanParametersRepository, LoanFinancialIndicatorsRepository, \
     PaymentScheduleRepository, PaymentPeriodRepository
+from vehicles.domain.enums import InsuranceType
+from vehicles.infrastructure.repositories import CarRepository
 
 
 class PerformFrenchAlgorithmCommand:
@@ -13,7 +15,6 @@ class PerformFrenchAlgorithmCommand:
             vehicle_id: int,
             bank_entity: str,
             vehicle_cost: float,
-            vehicle_type: str,
             down_payment_percentage: float,
             balloon_payment_percentage: float,
             tea: float,
@@ -27,7 +28,6 @@ class PerformFrenchAlgorithmCommand:
         self.vehicle_id = vehicle_id
         self.bank_entity = bank_entity
         self.vehicle_cost = vehicle_cost
-        self.vehicle_type = vehicle_type
         self.down_payment_percentage = down_payment_percentage
         self.balloon_payment_percentage = balloon_payment_percentage
         self.tea = tea
@@ -40,6 +40,7 @@ class PerformFrenchAlgorithmCommand:
 
 class LoanSimulationApplicationService:
     def __init__(self):
+        self.car_repository = CarRepository
         self.loan_parameters_repository = LoanParametersRepository
         self.loan_parameters_service = LoanParameterService
         self.loan_financial_indicators_repository = LoanFinancialIndicatorsRepository
@@ -49,12 +50,33 @@ class LoanSimulationApplicationService:
         self.payment_period_service = PaymentPeriodService
         self.payment_period_repository = PaymentPeriodRepository
 
+    @staticmethod
+    def _resolve_vehicle_type(car) -> str:
+        """Derive the insurance risk type from the vehicle, never from client input.
+
+        Prefers the explicitly assigned `vehicle_insurance`; falls back to mapping
+        the catalogue's Spanish `risk_category` label, defaulting to OTHERS.
+        """
+        if car.vehicle_insurance:
+            return car.vehicle_insurance.value
+
+        if car.risk_category:
+            return InsuranceType.from_risk_category(car.risk_category).value
+
+        return InsuranceType.OTHERS.value
+
     def perform_french_algorithm(self, command: PerformFrenchAlgorithmCommand) -> dict:
+
+        car = self.car_repository.find_by_id(command.vehicle_id)
+        if car is None:
+            raise ValueError("Vehicle not found")
+
+        vehicle_type = self._resolve_vehicle_type(car)
 
         # Create an instance of the FrenchMethodAlgorithm
         algorithm = FrenchMethodAlgorithm(
             vehicle_cost=command.vehicle_cost,
-            vehicle_type=command.vehicle_type,
+            vehicle_type=vehicle_type,
             down_payment_percentage=command.down_payment_percentage,
             balloon_payment_percentage=command.balloon_payment_percentage,
             tea=command.tea,
@@ -73,7 +95,7 @@ class LoanSimulationApplicationService:
             bank_entity=command.bank_entity,
             total_years=command.total_number_of_years,
             vehicle_price=command.vehicle_cost,
-            vehicle_type=command.vehicle_type,
+            vehicle_type=vehicle_type,
             down_payment=algorithm.vehicle_cost * algorithm.down_payment_percentage,
             financed_amount=algorithm.financed_amount,
             tea_percentage=command.tea,
@@ -100,6 +122,7 @@ class LoanSimulationApplicationService:
                 balance_end=period["end"],
                 interest=period["interest"],
                 amortization=period["amortization"],
+                french_installment=period["french_installment"],
                 mortgage=period["mortgage"],
                 vehicular_insurance=period["vehicular"],
                 balloon_fee=period["balloon_fee"],
