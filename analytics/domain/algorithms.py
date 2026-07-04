@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from math import pow
 
-from analytics.domain.constants import VehicleInsuranceConstants, MortgageInsuranceConstants
+from analytics.domain.constants import VehicleInsuranceConstants, MortgageInsuranceConstants, DiscountRateConstants
 
 
 class FrenchMethodAlgorithm:
@@ -145,9 +145,13 @@ class FrenchMethodAlgorithm:
             self.grace_period_in_periods = int(self.grace_period_in_months)
 
     def _calculate_constant_installment(self):
-        """ Calculate the constant installment based on the financed amount, effective rate, balloon fee, and number of periods. """
+        """ Calculate the constant installment based on the financed amount, effective rate, balloon fee, and number of periods.
 
-        n = self.number_of_periods
+        The grace periods are part of number_of_periods (the total term), not extra
+        periods on top of it, so the installment is spread over the remaining periods.
+        """
+
+        n = self.number_of_periods - self.grace_period_in_periods
         r = self.period_effective_rate
 
         factor = (1 + r) ** n
@@ -171,10 +175,14 @@ class FrenchMethodAlgorithm:
 
         return self.constant_installment - interest
 
-    def mortgage(self, balance):
-        """ Calculate the mortgage insurance for a period. """
+    def mortgage(self):
+        """ Calculate the mortgage insurance for a period.
 
-        return balance * self.mortgage_protection_factor
+        Charged on the original financed amount (like the vehicular insurance),
+        not on the declining balance, so it stays constant across periods.
+        """
+
+        return self.financed_amount * self.mortgage_protection_factor
 
     # -------------------------
     # FINANCIAL INDICATORS
@@ -233,12 +241,12 @@ class FrenchMethodAlgorithm:
         ) - 1
 
     def _calculate_npv(self):
-        """ Calculate the Net Present Value (NPV) using the cashflows. """
+        """ Calculate the Net Present Value (NPV) discounting the cashflows at the COK. """
 
-        rate = self.period_effective_rate / (1 + self.period_effective_rate)
+        period_cok = (pow(1 + DiscountRateConstants.COK_ANNUAL, self.periods_in_days / 360)) - 1
 
         self.npv = sum(
-            cf / ((1 + rate) ** t)
+            cf / ((1 + period_cok) ** t)
             for t, cf in enumerate(self.net_flows)
         )
 
@@ -265,11 +273,12 @@ class FrenchMethodAlgorithm:
 
             if self.grace_period_type == "PARTIAL":
 
-                mortgage = self.mortgage(balance)
+                mortgage = self.mortgage()
                 vehicular = self.period_vehicular_insurance
 
                 amort = 0.0
                 balloon_fee = 0.0
+                french_installment = interest
 
                 total = interest + mortgage + vehicular + balloon_fee
                 end = balance
@@ -282,9 +291,10 @@ class FrenchMethodAlgorithm:
 
                 amort = 0.0
                 balloon_fee = 0.0
+                french_installment = 0.0
 
                 total = 0.0
-                end = balance
+                end = balance + interest  # unpaid interest capitalizes into the balance
                 grace_type = "TOTAL"
 
             net_flow = -total
@@ -297,6 +307,7 @@ class FrenchMethodAlgorithm:
                     "end": end,
                     "interest": interest,
                     "amortization": amort,
+                    "french_installment": french_installment,
                     "mortgage": mortgage,
                     "vehicular": vehicular,
                     "balloon_fee": balloon_fee,
@@ -311,7 +322,9 @@ class FrenchMethodAlgorithm:
 
         # ---------------- FRENCH ----------------
 
-        for i in range(self.number_of_periods):
+        number_of_french_periods = self.number_of_periods - self.grace_period_in_periods
+
+        for i in range(number_of_french_periods):
 
             date += timedelta(days=self.periods_in_days)
 
@@ -321,18 +334,18 @@ class FrenchMethodAlgorithm:
             balloon_fee = 0.0
 
             # Último período
-            if i == self.number_of_periods - 1:
+            if i == number_of_french_periods - 1:
 
                 amort = balance - self.balloon_payment_fee
                 balloon_fee = self.balloon_payment_fee
-                remaining_balance = balance - amort
                 end = 0.0
 
             else:
 
                 end = balance - amort
 
-            mortgage = self.mortgage(balance)
+            french_installment = interest + amort
+            mortgage = self.mortgage()
             vehicular = self.period_vehicular_insurance
 
             total = (
@@ -353,6 +366,7 @@ class FrenchMethodAlgorithm:
                     "end": end,
                     "interest": interest,
                     "amortization": amort,
+                    "french_installment": french_installment,
                     "mortgage": mortgage,
                     "vehicular": vehicular,
                     "balloon_fee": balloon_fee,
