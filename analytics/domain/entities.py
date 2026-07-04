@@ -93,6 +93,7 @@ class PaymentPeriod:
         balance_start (float): The balance at the start of the payment period.
         interest (float): The amount of interest paid during the payment period.
         amortization (float): The amount of principal paid during the payment period.
+        french_installment (float): The French method installment (interest + amortization), excluding insurance and balloon fee.
         mortgage (float): The amount of mortgage protection insurance paid during the payment period.
         vehicular_insurance (float): The amount of vehicular insurance paid during the payment period.
         total_payment (float): The total amount paid during the payment period, including interest, amortization, and insurance.
@@ -116,6 +117,7 @@ class PaymentPeriod:
             total_payment: float,
             net_flow: float,
             grace_period_type: str,
+            french_installment: float = 0.0,
             payment_schedule_id: Optional[int] = None,
             payment_period_id: Optional[int] = None
     ):
@@ -123,6 +125,7 @@ class PaymentPeriod:
         self.balance_start = balance_start
         self.interest = interest
         self.amortization = amortization
+        self.french_installment = french_installment
         self.mortgage= mortgage
         self.vehicular_insurance = vehicular_insurance
         self.total_payment = total_payment

@@ -68,10 +68,10 @@ def on_application_started() -> None:
                 photo_url=managed_url,
             )
             repository.save(car)
-            print(f"[Vehicles]   ✓ {data['year']} {data['make']} {data['model']}")
+            print(f"[Vehicles]   OK {data['year']} {data['make']} {data['model']}")
 
         except Exception as exc:
-            print(f"[Vehicles]   ✗ {data['year']} {data['make']} {data['model']} — {exc}")
+            print(f"[Vehicles]   FAILED {data['year']} {data['make']} {data['model']} — {exc}")
 
     print("[Vehicles] Seeding complete.")
 

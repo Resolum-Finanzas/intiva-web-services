@@ -45,6 +45,7 @@ class PaymentPeriodModel(Model):
     balance_end = FloatField()
     interest = FloatField()
     amortization = FloatField()
+    french_installment = FloatField(default=0.0)
     mortgage = FloatField()
     vehicular_insurance = FloatField()
     balloon_fee = FloatField()
